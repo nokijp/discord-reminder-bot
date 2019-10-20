@@ -3,6 +3,11 @@ version:             0.1.0.0
 
 dependencies:
 - base >= 4.7 && < 5
+- exceptions
+- mongoDB
+- mtl
+- text
+- time
 
 ghc-options:
 - -Wall
@@ -29,7 +34,7 @@ executables:
 
 tests:
   reminder-bot-test:
-    main:                Spec.hs
+    main:                Main.hs
     source-dirs:         test
     ghc-options:
     - -threaded
@@ -38,3 +43,4 @@ tests:
     dependencies:
     - reminder-bot
     - hspec
+    - process
