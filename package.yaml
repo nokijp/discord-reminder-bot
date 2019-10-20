@@ -1,0 +1,40 @@
+name:                reminder-bot
+version:             0.1.0.0
+
+dependencies:
+- base >= 4.7 && < 5
+
+ghc-options:
+- -Wall
+- -Werror
+- -Widentities
+- -Wmissing-export-lists
+- -Wmissing-exported-signatures
+- -Wpartial-fields
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+
+executables:
+  reminder-bot-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - reminder-bot
+
+tests:
+  reminder-bot-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - reminder-bot
+    - hspec
