@@ -6,6 +6,7 @@ module Network.ReminderBot.ScheduleStore
   , Schedule(..)
   , addSchedule
   , getSchedule
+  , listSchedule
   ) where
 
 import Control.Monad.Catch
@@ -58,6 +59,19 @@ getSchedule config time = runAction config $ do
   delete query
 
   return $ snd <$> mapMaybe extractSchedule documents
+
+listSchedule :: MonadIO m => ScheduleStoreConfig -> Word64 -> m [(UTCTime, Schedule)]
+listSchedule config channel = runAction config $ do
+  ensureIndices config
+
+  let
+    sel = [channelLabel =: Int64 (fromIntegral channel)]
+    order = [scheduleTimeLabel := Int32 1]
+    query = (select sel $ collectionName config) { sort = order }
+  cursor <- find query
+  documents <- nextBatch cursor
+
+  return $ mapMaybe extractSchedule documents
 
 
 extractSchedule :: Document -> Maybe (UTCTime, Schedule)
