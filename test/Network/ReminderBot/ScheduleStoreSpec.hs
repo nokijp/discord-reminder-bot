@@ -98,3 +98,23 @@ spec = do
       listSchedule config 1
     it "returns an ordered list even if added in reverse order" $ do
       resultOrdered `shouldBe` [(time1, schedule1), (time2, schedule4)]
+
+  describe "removeSchedule" $ do
+    (result1, result2, result3, result4, result5, result6) <- runIO $ do
+      let config = scheduleStoreConfig "collectionRemove"
+      result1 <- removeSchedule config 101
+      addSchedule config time1 schedule1
+      addSchedule config time2 schedule2
+      result2 <- removeSchedule config 101
+      result3 <- removeSchedule config 101
+      result4 <- removeSchedule config 301
+      result5 <- getSchedule config time1
+      result6 <- getSchedule config time2
+      return (result1, result2, result3, result4, result5, result6)
+    it "removes a schedule and returns True if and only if the schedule which has the given source exists" $ do
+      result1 `shouldBe` False
+      result2 `shouldBe` True
+      result3 `shouldBe` False
+      result4 `shouldBe` False
+      result5 `shouldMatchList` []
+      result6 `shouldMatchList` [schedule2]
