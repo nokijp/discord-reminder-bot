@@ -6,6 +6,7 @@ dependencies:
 - exceptions
 - mongoDB
 - mtl
+- parsec == 3.*
 - text
 - time
 

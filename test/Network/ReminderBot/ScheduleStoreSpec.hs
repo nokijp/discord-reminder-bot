@@ -7,6 +7,7 @@ module Network.ReminderBot.ScheduleStoreSpec
 
 import Data.Time.Calendar
 import Data.Time.Clock
+import Network.ReminderBot.Schedule
 import Network.ReminderBot.ScheduleStore
 import Test.Hspec
 import TestConfig

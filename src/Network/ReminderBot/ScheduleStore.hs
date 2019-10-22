@@ -18,6 +18,7 @@ import Data.Text (Text)
 import Data.Time.Clock
 import Data.Word
 import Database.MongoDB hiding (host)
+import Network.ReminderBot.Schedule
 
 data ScheduleStoreConfig = ScheduleStoreConfig { mongoHost :: String
                                                , mongoPort :: Word16
@@ -31,11 +32,6 @@ defaultScheduleStoreConfig = ScheduleStoreConfig { mongoHost = "localhost"
                                                  , dbName = "reminderBot"
                                                  , collectionName = "scheduleStore"
                                                  }
-
-data Schedule = Schedule { scheduleChannel :: Word64
-                         , scheduleSource :: Word64
-                         , scheduleMessage :: Text
-                         } deriving (Show, Eq)
 
 addSchedule :: MonadIO m => ScheduleStoreConfig -> UTCTime -> Schedule -> m ()
 addSchedule config time schedule = runAction config $ do
@@ -74,6 +70,7 @@ listSchedule config channel = runAction config $ do
 
   return $ mapMaybe extractSchedule documents
 
+-- FIXME: validate channel
 removeSchedule :: MonadIO m => ScheduleStoreConfig -> Word64 -> m Bool
 removeSchedule config source = runAction config $ do
   let
