@@ -14,13 +14,12 @@ import Data.Word
 import Network.ReminderBot.Command.Types
 import Numeric
 import Text.Parsec
-import Text.Parsec.Error
 import Text.Parsec.Text
 
-parseCommand :: Text -> Either Text Command
+parseCommand :: Text -> Either CommandError Command
 parseCommand input =
   let (commandName, commandBody) = fromRight ("", "") $ parse inputParser "" input
-  in left errorMessage $ parse (commandParser commandName) "" commandBody
+  in parseCommandBody commandName commandBody
 
 inputParser :: Parser (Text, Text)
 inputParser =   try ((, "") <$> (spaces *> commandName <* spaces <* eof))
@@ -29,11 +28,12 @@ inputParser =   try ((, "") <$> (spaces *> commandName <* spaces <* eof))
     commandName = T.pack <$> many1 alphaNum
     commandBody = T.strip . T.pack <$> many anyToken
 
-commandParser :: Text -> Parser Command
-commandParser "add" = addCommandParser
-commandParser "ls"  = listCommandParser
-commandParser "rm"  = removeCommandParser
-commandParser _     = CommandHelp <$ many anyChar
+parseCommandBody :: Text -> Text -> Either CommandError Command
+parseCommandBody "add" commandBody = left (const AddArgumentError) $ parse addCommandParser "" commandBody
+parseCommandBody "ls"  ""          = Right CommandList
+parseCommandBody "ls"  _           = Left ListArgumentError
+parseCommandBody "rm"  commandBody = left (const RemoveArgumentError) $ parse removeCommandParser "" commandBody
+parseCommandBody _     _           = Left UnknownCommandError
 
 addCommandParser :: Parser Command
 addCommandParser = CommandAdd <$> timeParser <*> (skipMany1 space *> messageParser <* eof)
@@ -47,9 +47,6 @@ addCommandParser = CommandAdd <$> timeParser <*> (skipMany1 space *> messagePars
     n :: Read a => Parser a
     n = read <$> many1 digit
 
-listCommandParser :: Parser Command
-listCommandParser = CommandList <$ eof
-
 removeCommandParser :: Parser Command
 removeCommandParser = CommandRemove <$> (sourceParser <* eof)
   where
@@ -57,6 +54,3 @@ removeCommandParser = CommandRemove <$> (sourceParser <* eof)
     sourceParser = forceReadHex <$> many1 hexDigit
     forceReadHex :: (Eq a, Num a) => String -> a
     forceReadHex s = let [(n, "")] = readHex s in n
-
-errorMessage :: ParseError -> Text
-errorMessage = T.pack . showErrorMessages "or" "unknown parse error" "expecting" "unexpected" "end of input" . errorMessages

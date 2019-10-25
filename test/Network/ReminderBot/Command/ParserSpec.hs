@@ -30,37 +30,41 @@ spec = do
         parseCommand "add 11:22 33:44 abc" `shouldBe` Right (CommandAdd (CommandTimeHM 11 22) "33:44 abc")
       it "can parse a command with extra spaces" $
         parseCommand "  add  11:22     abc  " `shouldBe` Right (CommandAdd (CommandTimeHM 11 22) "abc")
-      it "returns an error if the body is empty" $
-        parseCommand "add" `shouldSatisfy` isLeft
-      it "returns an error if the message is empty" $
-        parseCommand "add 11:22   " `shouldSatisfy` isLeft
+      it "returns AddArgumentError if the body is empty" $
+        parseCommand "add" `shouldBe` Left AddArgumentError
+      it "returns AddArgumentError if the message is empty" $
+        parseCommand "add 11:22   " `shouldBe` Left AddArgumentError
 
     context "when given a \"ls\" command" $ do
       it "can parse" $
         parseCommand "ls" `shouldBe` Right CommandList
       it "can parse a command with extra spaces" $
         parseCommand "  ls   " `shouldBe` Right CommandList
-      it "returns an error if the command has an extra argument" $
-        parseCommand "ls a" `shouldSatisfy` isLeft
+      it "returns ListArgumentError if the command has an extra argument" $
+        parseCommand "ls a" `shouldBe` Left ListArgumentError
 
     context "when given a \"rm\" command" $ do
       it "can parse" $
         parseCommand "rm 1234abc" `shouldBe` Right (CommandRemove 0x1234abc)
       it "can parse a command with extra spaces" $
         parseCommand "    rm   1234abc    " `shouldBe` Right (CommandRemove 0x1234abc)
-      it "returns an error if the command has no ID" $
-        parseCommand "rm" `shouldSatisfy` isLeft
-      it "returns an error if the command has an empty ID" $
-        parseCommand "rm " `shouldSatisfy` isLeft
-      it "returns an error if the command has an extra argument" $
-        parseCommand "rm 1234abc 1234abc" `shouldSatisfy` isLeft
+      it "can parse a number which starts with 0" $
+        parseCommand "rm 0000" `shouldBe` Right (CommandRemove 0)
+      it "does not crash when given a large number" $
+        parseCommand "rm ffffffffffffffffffffffffffffffffffffffff" `shouldSatisfy` isRight
+      it "returns RemoveArgumentError if the command has no ID" $
+        parseCommand "rm" `shouldBe` Left RemoveArgumentError
+      it "returns RemoveArgumentError if the command has an empty ID" $
+        parseCommand "rm " `shouldBe` Left RemoveArgumentError
+      it "returns RemoveArgumentError if the command has an extra argument" $
+        parseCommand "rm 1234abc 1234abc" `shouldBe` Left RemoveArgumentError
 
     context "when given an unknown command" $ do
-      it "returns CommandHelp" $
-        parseCommand "unknown" `shouldBe` Right CommandHelp
-      it "returns CommandHelp when given a string which starts with \"add\"" $
-        parseCommand "addd 11:22 message" `shouldBe` Right CommandHelp
-      it "returns CommandHelp when given a string which starts with \"ls\"" $
-        parseCommand "lss" `shouldBe` Right CommandHelp
-      it "returns CommandHelp when given a string which starts with \"rm\"" $
-        parseCommand "rmm 1234abc" `shouldBe` Right CommandHelp
+      it "returns UnknownCommandError" $
+        parseCommand "unknown" `shouldBe` Left UnknownCommandError
+      it "returns UnknownCommandError when given a string which starts with \"add\"" $
+        parseCommand "addd 11:22 message" `shouldBe` Left UnknownCommandError
+      it "returns UnknownCommandError when given a string which starts with \"ls\"" $
+        parseCommand "lss" `shouldBe` Left UnknownCommandError
+      it "returns UnknownCommandError when given a string which starts with \"rm\"" $
+        parseCommand "rmm 1234abc" `shouldBe` Left UnknownCommandError
