@@ -3,10 +3,13 @@ version:             0.1.0.0
 
 dependencies:
 - base >= 4.7 && < 5
+- binary
+- bytestring
 - exceptions
 - mongoDB
 - mtl
 - parsec == 3.*
+- SHA
 - text
 - time
 
@@ -45,3 +48,4 @@ tests:
     - reminder-bot
     - hspec
     - process
+    - QuickCheck
