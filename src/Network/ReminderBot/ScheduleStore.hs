@@ -18,6 +18,7 @@ import Data.Text (Text)
 import Data.Time.Clock
 import Data.Word
 import Database.MongoDB hiding (host)
+import Network.ReminderBot.HashCode
 import Network.ReminderBot.Schedule
 
 data ScheduleStoreConfig = ScheduleStoreConfig { mongoHost :: String
@@ -33,16 +34,31 @@ defaultScheduleStoreConfig = ScheduleStoreConfig { mongoHost = "localhost"
                                                  , collectionName = "scheduleStore"
                                                  }
 
-addSchedule :: MonadIO m => ScheduleStoreConfig -> UTCTime -> Schedule -> m ()
-addSchedule config time schedule = runAction config $ do
+addSchedule :: MonadIO m
+            => ScheduleStoreConfig
+            -> UTCTime
+            -> ChannelID
+            -> MessageID
+            -> Text
+            -> m Schedule
+addSchedule config time channelID messageID message = runAction config $ do
   ensureIndices config
 
-  let document = [ scheduleTimeLabel =: UTC time
-                 , channelLabel =: (Int64 $ fromIntegral $ scheduleChannel schedule)
-                 , sourceLabel =: (Int64 $ fromIntegral $ scheduleSource schedule)
-                 , messageLabel =: String (scheduleMessage schedule)
-                 ]
+  let
+    identifier = hashCode messageID
+    document = [ scheduleTimeLabel =: UTC time
+               , channelLabel =: (Int64 $ fromIntegral channelID)
+               , sourceLabel =: (Int64 $ fromIntegral messageID)
+               , identifierLabel =: (Int32 $ fromIntegral identifier)
+               , messageLabel =: String (scheduleMessage schedule)
+               ]
+    schedule = Schedule { scheduleChannel = channelID
+                        , scheduleIdentifier = identifier
+                        , scheduleMessage = message
+                        }
   insert_ (collectionName config) document
+
+  return schedule
 
 getSchedule :: MonadIO m => ScheduleStoreConfig -> UTCTime -> m [Schedule]
 getSchedule config time = runAction config $ do
@@ -57,12 +73,12 @@ getSchedule config time = runAction config $ do
 
   return $ snd <$> mapMaybe extractSchedule documents
 
-listSchedule :: MonadIO m => ScheduleStoreConfig -> Word64 -> m [(UTCTime, Schedule)]
-listSchedule config channel = runAction config $ do
+listSchedule :: MonadIO m => ScheduleStoreConfig -> ChannelID -> m [(UTCTime, Schedule)]
+listSchedule config channelID = runAction config $ do
   ensureIndices config
 
   let
-    sel = [channelLabel =: Int64 (fromIntegral channel)]
+    sel = [channelLabel =: Int64 (fromIntegral channelID)]
     order = [scheduleTimeLabel := Int32 1]
     query = (select sel $ collectionName config) { sort = order }
   cursor <- find query
@@ -70,12 +86,14 @@ listSchedule config channel = runAction config $ do
 
   return $ mapMaybe extractSchedule documents
 
--- FIXME: validate channel
-removeSchedule :: MonadIO m => ScheduleStoreConfig -> Word64 -> m Bool
-removeSchedule config source = runAction config $ do
+removeSchedule :: MonadIO m => ScheduleStoreConfig -> ChannelID -> HashCode -> m Bool
+removeSchedule config channelID identifier = runAction config $ do
   let
+    sel = [ channelLabel =: (Int64 $ fromIntegral channelID)
+          , identifierLabel =: Int32 (fromIntegral identifier)
+          ]
     query :: Select a => a
-    query = select [sourceLabel =: Int64 (fromIntegral source)] $ collectionName config
+    query = select sel $ collectionName config
   documentMaybe <- findOne query
   case documentMaybe of
     Just _ -> True <$ delete query
@@ -86,10 +104,10 @@ extractSchedule :: Document -> Maybe (UTCTime, Schedule)
 extractSchedule d = do
   time <- d !? scheduleTimeLabel
   channel <- d !? channelLabel
-  source <- d !? sourceLabel
+  identifier <- d !? identifierLabel
   message <- d !? messageLabel
   let schedule = Schedule { scheduleChannel = fromIntegral (channel :: Int64)
-                          , scheduleSource = fromIntegral (source :: Int64)
+                          , scheduleIdentifier = fromIntegral (identifier :: Int32)
                           , scheduleMessage = message
                           }
   return (time, schedule)
@@ -99,7 +117,7 @@ ensureIndices :: MonadIO m => ScheduleStoreConfig -> Action m ()
 ensureIndices config = do
   ensureIndex $ (index (collectionName config) [scheduleTimeLabel =: Int32 1]) { iExpireAfterSeconds = Just 3600 }
   ensureIndex $ index (collectionName config) [channelLabel =: Int32 1]
-  ensureIndex $ index (collectionName config) [sourceLabel =: Int32 1]
+  ensureIndex $ index (collectionName config) [identifierLabel =: Int32 1]
 
 runAction :: MonadIO m => ScheduleStoreConfig -> Action IO a -> m a
 runAction config f = liftIO $ bracket (connect host) close $ \pipe -> access pipe master (dbName config) f where
@@ -114,6 +132,9 @@ channelLabel = "channel"
 
 sourceLabel :: Label
 sourceLabel = "source"
+
+identifierLabel :: Label
+identifierLabel = "identifier"
 
 messageLabel :: Label
 messageLabel = "message"

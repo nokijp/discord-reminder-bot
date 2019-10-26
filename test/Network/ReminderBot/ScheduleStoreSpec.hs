@@ -7,6 +7,7 @@ module Network.ReminderBot.ScheduleStoreSpec
 
 import Data.Time.Calendar
 import Data.Time.Clock
+import Network.ReminderBot.HashCode
 import Network.ReminderBot.Schedule
 import Network.ReminderBot.ScheduleStore
 import Test.Hspec
@@ -20,22 +21,41 @@ spec = do
   let
     time1 = UTCTime (fromGregorian 10000 1 1) 0
     time2 = UTCTime (fromGregorian 10000 1 2) 0
-    schedule1 = Schedule { scheduleChannel = 1
-                         , scheduleSource = 101
-                         , scheduleMessage = "message1"
+    channelID1 = 1
+    messageID1 = 101
+    message1 = "message1"
+    schedule1 = Schedule { scheduleChannel = channelID1
+                         , scheduleIdentifier = messageHashCode messageID1
+                         , scheduleMessage = message1
                          }
-    schedule2 = Schedule { scheduleChannel = 2
-                         , scheduleSource = 201
-                         , scheduleMessage = "message2"
+    channelID2 = 2
+    messageID2 = 201
+    message2 = "message2"
+    schedule2 = Schedule { scheduleChannel = channelID2
+                         , scheduleIdentifier = messageHashCode messageID2
+                         , scheduleMessage = message2
                          }
-    schedule3 = Schedule { scheduleChannel = 3
-                         , scheduleSource = 301
-                         , scheduleMessage = "message3"
+    channelID3 = 3
+    messageID3 = 301
+    message3 = "message3"
+    schedule3 = Schedule { scheduleChannel = channelID3
+                         , scheduleIdentifier = messageHashCode messageID3
+                         , scheduleMessage = message3
                          }
-    schedule4 = Schedule { scheduleChannel = 1
-                         , scheduleSource = 102
-                         , scheduleMessage = "message4"
+    channelID4 = 1
+    messageID4 = 102
+    message4 = "message4"
+    schedule4 = Schedule { scheduleChannel = channelID4
+                         , scheduleIdentifier = messageHashCode messageID4
+                         , scheduleMessage = message4
                          }
+
+  describe "addSchedule" $ do
+    resultAdd <- runIO $ do
+      let config = scheduleStoreConfig "collectionAdd"
+      addSchedule config time1 channelID1 messageID1 message1
+    it "returns a Schedule" $ do
+      resultAdd `shouldBe` schedule1
 
   describe "getSchedule" $ do
     resultEmpty <- runIO $ do
@@ -46,7 +66,7 @@ spec = do
 
     (resultSingleItem1, resultSingleItem2, resultSingleItem3) <- runIO $ do
       let config = scheduleStoreConfig "collectionGetSingleItem"
-      addSchedule config time1 schedule1
+      _ <- addSchedule config time1 channelID1 messageID1 message1
       result1 <- getSchedule config time2
       result2 <- getSchedule config time1
       result3 <- getSchedule config time1
@@ -58,9 +78,9 @@ spec = do
 
     (resultMultipleItems1, resultMultipleItems2) <- runIO $ do
       let config = scheduleStoreConfig "collectionGetMultipleItems"
-      addSchedule config time1 schedule1
-      addSchedule config time1 schedule2
-      addSchedule config time2 schedule3
+      _ <- addSchedule config time1 channelID1 messageID1 message1
+      _ <- addSchedule config time1 channelID2 messageID2 message2
+      _ <- addSchedule config time2 channelID3 messageID3 message3
       result1 <- getSchedule config time1
       result2 <- getSchedule config time2
       return (result1, result2)
@@ -77,9 +97,9 @@ spec = do
 
     (resultMultipleItems1, resultMultipleItems2, resultMultipleItems3, resultMultipleItems4) <- runIO $ do
       let config = scheduleStoreConfig "collectionListMultipleItems"
-      addSchedule config time1 schedule1
-      addSchedule config time1 schedule2
-      addSchedule config time2 schedule4
+      _ <- addSchedule config time1 channelID1 messageID1 message1
+      _ <- addSchedule config time1 channelID2 messageID2 message2
+      _ <- addSchedule config time2 channelID4 messageID4 message4
       result1 <- listSchedule config 1
       result2 <- listSchedule config 2
       result3 <- listSchedule config 3
@@ -93,29 +113,35 @@ spec = do
 
     resultOrdered <- runIO $ do
       let config = scheduleStoreConfig "collectionListOrdered"
-      addSchedule config time2 schedule4
-      addSchedule config time1 schedule2
-      addSchedule config time1 schedule1
+      _ <- addSchedule config time2 channelID4 messageID4 message4
+      _ <- addSchedule config time1 channelID2 messageID2 message2
+      _ <- addSchedule config time1 channelID1 messageID1 message1
       listSchedule config 1
     it "returns an ordered list even if added in reverse order" $ do
       resultOrdered `shouldBe` [(time1, schedule1), (time2, schedule4)]
 
   describe "removeSchedule" $ do
-    (result1, result2, result3, result4, result5, result6) <- runIO $ do
+    (resultRemove1, resultRemove2, resultRemove3, resultRemove4, resultRemove5, resultRemove6, resultGet) <- runIO $ do
       let config = scheduleStoreConfig "collectionRemove"
-      result1 <- removeSchedule config 101
-      addSchedule config time1 schedule1
-      addSchedule config time2 schedule2
-      result2 <- removeSchedule config 101
-      result3 <- removeSchedule config 101
-      result4 <- removeSchedule config 301
-      result5 <- getSchedule config time1
-      result6 <- getSchedule config time2
-      return (result1, result2, result3, result4, result5, result6)
-    it "removes a schedule and returns True if and only if the schedule which has the given source exists" $ do
-      result1 `shouldBe` False
-      result2 `shouldBe` True
-      result3 `shouldBe` False
-      result4 `shouldBe` False
-      result5 `shouldMatchList` []
-      result6 `shouldMatchList` [schedule2]
+      resultRemove1 <- removeSchedule config channelID1 (messageHashCode messageID1)  -- []
+      _ <- addSchedule config time1 channelID1 messageID1 message1  -- [1]
+      _ <- addSchedule config time1 channelID2 messageID2 message2  -- [1, 2, 4]
+      _ <- addSchedule config time1 channelID4 messageID4 message4  -- [1, 2, 4]
+      resultRemove2 <- removeSchedule config channelID1 (messageHashCode messageID1)  -- [2, 4]
+      resultRemove3 <- removeSchedule config channelID1 (messageHashCode messageID1)  -- [2, 4]
+      resultRemove4 <- removeSchedule config channelID3 (messageHashCode messageID3)  -- [2, 4]
+      resultRemove5 <- removeSchedule config channelID4 (messageHashCode messageID2)  -- [2, 4]
+      resultRemove6 <- removeSchedule config channelID2 (messageHashCode messageID4)  -- [2, 4]
+      resultGet <- getSchedule config time1
+      return (resultRemove1, resultRemove2, resultRemove3, resultRemove4, resultRemove5, resultRemove6, resultGet)
+    it "removes a schedule and returns True if and only if the schedule exists" $ do
+      resultRemove1 `shouldBe` False
+      resultRemove2 `shouldBe` True
+      resultRemove3 `shouldBe` False
+      resultRemove4 `shouldBe` False
+      resultRemove5 `shouldBe` False
+      resultRemove6 `shouldBe` False
+      resultGet `shouldMatchList` [schedule2, schedule4]
+
+messageHashCode :: MessageID -> HashCode
+messageHashCode = hashCode
