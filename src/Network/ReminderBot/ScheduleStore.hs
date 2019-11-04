@@ -69,7 +69,7 @@ getFirstSchedule config = runAction config $ do
 getScheduleBefore :: MonadIO m => ScheduleStoreConfig -> UTCTime -> m [Schedule]
 getScheduleBefore config time = runAction config $ do
   cursor <- find $ selectBefore config time
-  documents <- nextBatch cursor
+  documents <- allDocuments cursor
   return $ snd <$> mapMaybe extractSchedule documents
 
 removeScheduleBefore :: MonadIO m => ScheduleStoreConfig -> UTCTime -> m ()
@@ -82,7 +82,7 @@ listSchedule config channelID = runAction config $ do
     sel = [channelLabel =: Int64 (fromIntegral channelID)]
     query = (select sel $ collectionName config) { sort = [scheduleTimeLabel := Int32 1] }
   cursor <- find query
-  documents <- nextBatch cursor
+  documents <- allDocuments cursor
   return $ mapMaybe extractSchedule documents
 
 removeSchedule :: MonadIO m => ScheduleStoreConfig -> ChannelID -> HashCode -> m Bool
@@ -114,6 +114,12 @@ extractSchedule d = do
 selectBefore :: Select a => ScheduleStoreConfig -> UTCTime -> a
 selectBefore config time = select [scheduleTimeLabel =: ["$lte" =: UTC time]] $ collectionName config
 
+allDocuments :: MonadIO m => Cursor -> Action m [Document]
+allDocuments cursor = do
+  part <- nextBatch cursor
+  if null part
+  then return []
+  else (part ++) <$> allDocuments cursor
 
 ensureIndices :: MonadIO m => ScheduleStoreConfig -> Action m ()
 ensureIndices config = do

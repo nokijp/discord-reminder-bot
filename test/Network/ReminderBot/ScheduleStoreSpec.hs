@@ -5,6 +5,7 @@ module Network.ReminderBot.ScheduleStoreSpec
   , spec
   ) where
 
+import Control.Monad
 import Data.Time.Calendar
 import Data.Time.Clock
 import Network.ReminderBot.HashCode
@@ -104,6 +105,13 @@ spec = do
       resultMultipleItems1 `shouldMatchList` [schedule1]
       resultMultipleItems2 `shouldMatchList` [schedule1, schedule2]
       resultMultipleItems3 `shouldMatchList` [schedule1, schedule2, schedule3]
+
+    resultManyItems <- runIO $ do
+      let config = scheduleStoreConfig "collectionGetManyItems"
+      _ <- replicateM_ 200 $ addSchedule config time1 channelID1 messageID1 message1
+      getScheduleBefore config time1
+    it "can return a large number of schedules" $ do
+      length resultManyItems `shouldBe` 200
 
   describe "removeScheduleBefore" $ do
     resultEmpty <- runIO $ do
