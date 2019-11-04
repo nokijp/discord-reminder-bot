@@ -120,8 +120,9 @@ ensureIndices config = do
   ensureIndex $ index (collectionName config) [identifierLabel =: Int32 1]
 
 runAction :: MonadIO m => ScheduleStoreConfig -> Action IO a -> m a
-runAction config f = liftIO $ bracket (connect host) close $ \pipe -> access pipe master (dbName config) f where
-  host = Host (mongoHost config) (PortNumber $ fromIntegral $ mongoPort config)
+runAction config f = liftIO $ bracket (connect host) close $ \pipe -> access pipe master (dbName config) f
+  where
+    host = Host (mongoHost config) (PortNumber $ fromIntegral $ mongoPort config)
 
 
 scheduleTimeLabel :: Label
