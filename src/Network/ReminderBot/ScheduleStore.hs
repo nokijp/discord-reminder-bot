@@ -5,7 +5,9 @@ module Network.ReminderBot.ScheduleStore
   , defaultScheduleStoreConfig
   , Schedule(..)
   , addSchedule
-  , getSchedule
+  , getFirstSchedule
+  , getScheduleBefore
+  , removeScheduleBefore
   , listSchedule
   , removeSchedule
   ) where
@@ -42,8 +44,6 @@ addSchedule :: MonadIO m
             -> Text
             -> m Schedule
 addSchedule config time channelID messageID message = runAction config $ do
-  ensureIndices config
-
   let
     identifier = hashCode messageID
     document = [ scheduleTimeLabel =: UTC time
@@ -60,30 +60,29 @@ addSchedule config time channelID messageID message = runAction config $ do
 
   return schedule
 
-getSchedule :: MonadIO m => ScheduleStoreConfig -> UTCTime -> m [Schedule]
-getSchedule config time = runAction config $ do
-  ensureIndices config
+getFirstSchedule :: MonadIO m => ScheduleStoreConfig -> m (Maybe (UTCTime, Schedule))
+getFirstSchedule config = runAction config $ do
+  let query = (select [] $ collectionName config) { sort = [scheduleTimeLabel := Int32 1] }
+  documentMaybe <- findOne query
+  return $ extractSchedule =<< documentMaybe
 
-  let
-    query :: Select a => a
-    query = select [scheduleTimeLabel =: UTC time] $ collectionName config
-  cursor <- find query
+getScheduleBefore :: MonadIO m => ScheduleStoreConfig -> UTCTime -> m [Schedule]
+getScheduleBefore config time = runAction config $ do
+  cursor <- find $ selectBefore config time
   documents <- nextBatch cursor
-  delete query
-
   return $ snd <$> mapMaybe extractSchedule documents
+
+removeScheduleBefore :: MonadIO m => ScheduleStoreConfig -> UTCTime -> m ()
+removeScheduleBefore config time = runAction config $
+  delete $ selectBefore config time
 
 listSchedule :: MonadIO m => ScheduleStoreConfig -> ChannelID -> m [(UTCTime, Schedule)]
 listSchedule config channelID = runAction config $ do
-  ensureIndices config
-
   let
     sel = [channelLabel =: Int64 (fromIntegral channelID)]
-    order = [scheduleTimeLabel := Int32 1]
-    query = (select sel $ collectionName config) { sort = order }
+    query = (select sel $ collectionName config) { sort = [scheduleTimeLabel := Int32 1] }
   cursor <- find query
   documents <- nextBatch cursor
-
   return $ mapMaybe extractSchedule documents
 
 removeSchedule :: MonadIO m => ScheduleStoreConfig -> ChannelID -> HashCode -> m Bool
@@ -112,6 +111,9 @@ extractSchedule d = do
                           }
   return (time, schedule)
 
+selectBefore :: Select a => ScheduleStoreConfig -> UTCTime -> a
+selectBefore config time = select [scheduleTimeLabel =: ["$lte" =: UTC time]] $ collectionName config
+
 
 ensureIndices :: MonadIO m => ScheduleStoreConfig -> Action m ()
 ensureIndices config = do
@@ -120,9 +122,10 @@ ensureIndices config = do
   ensureIndex $ index (collectionName config) [identifierLabel =: Int32 1]
 
 runAction :: MonadIO m => ScheduleStoreConfig -> Action IO a -> m a
-runAction config f = liftIO $ bracket (connect host) close $ \pipe -> access pipe master (dbName config) f
+runAction config action = liftIO $ bracket (connect host) close $ \pipe -> access pipe master (dbName config) action'
   where
     host = Host (mongoHost config) (PortNumber $ fromIntegral $ mongoPort config)
+    action' = ensureIndices config >> action
 
 
 scheduleTimeLabel :: Label

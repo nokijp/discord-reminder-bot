@@ -21,6 +21,7 @@ spec = do
   let
     time1 = UTCTime (fromGregorian 10000 1 1) 0
     time2 = UTCTime (fromGregorian 10000 1 2) 0
+    time3 = UTCTime (fromGregorian 10000 1 3) 0
     channelID1 = 1
     messageID1 = 101
     message1 = "message1"
@@ -57,35 +58,71 @@ spec = do
     it "returns a Schedule" $ do
       resultAdd `shouldBe` schedule1
 
-  describe "getSchedule" $ do
+  describe "getFirstSchedule" $ do
+    resultEmpty <- runIO $ do
+      let config = scheduleStoreConfig "collectionGetFirstEmpty"
+      getFirstSchedule config
+    it "returns Nothing if the DB has no documents" $ do
+      resultEmpty `shouldBe` Nothing
+
+    resultMultipleItems <- runIO $ do
+      let config = scheduleStoreConfig "collectionGetFirstMultipleItems"
+      _ <- addSchedule config time1 channelID1 messageID1 message1
+      _ <- addSchedule config time2 channelID2 messageID2 message2
+      _ <- addSchedule config time3 channelID3 messageID3 message3
+      getFirstSchedule config
+    it "returns a schedule which has the most earliest time" $ do
+      resultMultipleItems `shouldBe` Just (time1, schedule1)
+
+  describe "getScheduleBefore" $ do
     resultEmpty <- runIO $ do
       let config = scheduleStoreConfig "collectionGetEmpty"
-      getSchedule config time1
+      getScheduleBefore config time1
     it "returns an empty list when the DB has no documents" $ do
       resultEmpty `shouldMatchList` []
 
-    (resultSingleItem1, resultSingleItem2, resultSingleItem3) <- runIO $ do
+    (resultSingleItem1, resultSingleItem2) <- runIO $ do
       let config = scheduleStoreConfig "collectionGetSingleItem"
-      _ <- addSchedule config time1 channelID1 messageID1 message1
-      result1 <- getSchedule config time2
-      result2 <- getSchedule config time1
-      result3 <- getSchedule config time1
-      return (result1, result2, result3)
-    it "returns a list only for the first query" $ do
+      _ <- addSchedule config time2 channelID1 messageID1 message1
+      result1 <- getScheduleBefore config time1
+      result2 <- getScheduleBefore config time2
+      return (result1, result2)
+    it "returns a schedule whose time is before a specified time" $ do
       resultSingleItem1 `shouldMatchList` []
       resultSingleItem2 `shouldMatchList` [schedule1]
-      resultSingleItem3 `shouldMatchList` []
 
-    (resultMultipleItems1, resultMultipleItems2) <- runIO $ do
+    (resultMultipleItems1, resultMultipleItems2, resultMultipleItems3) <- runIO $ do
       let config = scheduleStoreConfig "collectionGetMultipleItems"
       _ <- addSchedule config time1 channelID1 messageID1 message1
-      _ <- addSchedule config time1 channelID2 messageID2 message2
-      _ <- addSchedule config time2 channelID3 messageID3 message3
-      result1 <- getSchedule config time1
-      result2 <- getSchedule config time2
+      _ <- addSchedule config time2 channelID2 messageID2 message2
+      _ <- addSchedule config time3 channelID3 messageID3 message3
+      result1 <- getScheduleBefore config time1
+      result2 <- getScheduleBefore config time2
+      result3 <- getScheduleBefore config time3
+      return (result1, result2, result3)
+    it "returns all schedules whose time is before the specified time" $ do
+      resultMultipleItems1 `shouldMatchList` [schedule1]
+      resultMultipleItems2 `shouldMatchList` [schedule1, schedule2]
+      resultMultipleItems3 `shouldMatchList` [schedule1, schedule2, schedule3]
+
+  describe "removeScheduleBefore" $ do
+    resultEmpty <- runIO $ do
+      let config = scheduleStoreConfig "collectionRemoveEmpty"
+      removeScheduleBefore config time1
+    it "does not crash if the storage is empty" $ do
+      resultEmpty `shouldBe` ()
+
+    (resultMultipleItems1, resultMultipleItems2) <- runIO $ do
+      let config = scheduleStoreConfig "collectionRemoveMultipleItems"
+      _ <- addSchedule config time1 channelID1 messageID1 message1
+      _ <- addSchedule config time2 channelID2 messageID2 message2
+      _ <- addSchedule config time3 channelID3 messageID3 message3
+      result1 <- getScheduleBefore config time3
+      removeScheduleBefore config time2
+      result2 <- getScheduleBefore config time3
       return (result1, result2)
-    it "returns a list only for the first query" $ do
-      resultMultipleItems1 `shouldMatchList` [schedule1, schedule2]
+    it "removes only schedules whose time is before the specified time" $ do
+      resultMultipleItems1 `shouldMatchList` [schedule1, schedule2, schedule3]
       resultMultipleItems2 `shouldMatchList` [schedule3]
 
   describe "listSchedule" $ do
@@ -132,7 +169,7 @@ spec = do
       resultRemove4 <- removeSchedule config channelID3 (messageHashCode messageID3)  -- [2, 4]
       resultRemove5 <- removeSchedule config channelID4 (messageHashCode messageID2)  -- [2, 4]
       resultRemove6 <- removeSchedule config channelID2 (messageHashCode messageID4)  -- [2, 4]
-      resultGet <- getSchedule config time1
+      resultGet <- getScheduleBefore config time1
       return (resultRemove1, resultRemove2, resultRemove3, resultRemove4, resultRemove5, resultRemove6, resultGet)
     it "removes a schedule and returns True if and only if the schedule exists" $ do
       resultRemove1 `shouldBe` False
