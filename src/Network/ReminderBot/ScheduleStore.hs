@@ -43,9 +43,10 @@ addSchedule :: MonadIO m
             -> GuildID
             -> ChannelID
             -> MessageID
+            -> UserID
             -> Text
             -> m Schedule
-addSchedule config time guildID channelID messageID message = runAction config $ do
+addSchedule config time guildID channelID messageID userID message = runAction config $ do
   let
     identifier = hashCode messageID
     document = [ scheduleTimeLabel =: UTC time
@@ -53,11 +54,13 @@ addSchedule config time guildID channelID messageID message = runAction config $
                , channelLabel =: (Int64 $ fromIntegral channelID)
                , sourceLabel =: (Int64 $ fromIntegral messageID)
                , identifierLabel =: (Int32 $ fromIntegral identifier)
+               , userLabel =: (Int64 $ fromIntegral userID)
                , messageLabel =: String (scheduleMessage schedule)
                ]
     schedule = Schedule { scheduleGuild = guildID
                         , scheduleChannel = channelID
                         , scheduleIdentifier = identifier
+                        , scheduleUser = userID
                         , scheduleMessage = message
                         }
   insert_ (collectionName config) document
@@ -113,10 +116,12 @@ extractSchedule d = do
   guild <- d !? guildLabel
   channel <- d !? channelLabel
   identifier <- d !? identifierLabel
+  user <- d !? userLabel
   message <- d !? messageLabel
   let schedule = Schedule { scheduleGuild = fromIntegral (guild :: Int64)
                           , scheduleChannel = fromIntegral (channel :: Int64)
                           , scheduleIdentifier = fromIntegral (identifier :: Int32)
+                          , scheduleUser = fromIntegral (user :: Int32)
                           , scheduleMessage = message
                           }
   return (time, schedule)
@@ -159,6 +164,9 @@ sourceLabel = "source"
 
 identifierLabel :: Label
 identifierLabel = "identifier"
+
+userLabel :: Label
+userLabel = "user"
 
 messageLabel :: Label
 messageLabel = "message"
