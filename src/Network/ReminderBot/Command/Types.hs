@@ -12,7 +12,8 @@ import Data.Time.LocalTime
 import Network.ReminderBot.HashCode
 
 data Command = CommandAdd CommandTime Text
-             | CommandList
+             | CommandListGuild
+             | CommandListChannel
              | CommandRemove HashCode
                deriving (Show, Eq)
 

@@ -36,11 +36,15 @@ spec = do
 
     context "when given a \"ls\" command" $ do
       it "can parse" $
-        parseCommand "ls" `shouldBe` Right CommandList
+        parseCommand "ls" `shouldBe` Right CommandListChannel
+      it "can parse a command with an option" $
+        parseCommand "ls all" `shouldBe` Right CommandListGuild
       it "can parse a command with extra spaces" $
-        parseCommand "  ls   " `shouldBe` Right CommandList
-      it "returns ListArgumentError if the command has an extra argument" $
-        parseCommand "ls a" `shouldBe` Left ListArgumentError
+        parseCommand "  ls   " `shouldBe` Right CommandListChannel
+      it "can parse a command with an option and extra spaces" $
+        parseCommand "  ls   all   " `shouldBe` Right CommandListGuild
+      it "returns ListArgumentError if the command has an unexpected argument" $
+        parseCommand "ls xxx" `shouldBe` Left ListArgumentError
 
     context "when given a \"rm\" command" $ do
       it "can parse" $

@@ -30,7 +30,8 @@ inputParser =   try ((, "") <$> (spaces *> commandName <* spaces <* eof))
 
 parseCommandBody :: Text -> Text -> Either CommandError Command
 parseCommandBody "add" commandBody = left (const AddArgumentError) $ parse addCommandParser "" commandBody
-parseCommandBody "ls"  ""          = Right CommandList
+parseCommandBody "ls"  "all"       = Right CommandListGuild
+parseCommandBody "ls"  ""          = Right CommandListChannel
 parseCommandBody "ls"  _           = Left ListArgumentError
 parseCommandBody "rm"  commandBody = left (const RemoveArgumentError) $ parse removeCommandParser "" commandBody
 parseCommandBody _     _           = Left UnknownCommandError
