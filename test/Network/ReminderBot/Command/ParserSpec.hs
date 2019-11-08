@@ -5,7 +5,6 @@ module Network.ReminderBot.Command.ParserSpec
   , spec
   ) where
 
-import Data.Either
 import Network.ReminderBot.Command.Parser
 import Test.Hspec
 
@@ -51,7 +50,7 @@ spec = do
       it "can parse a number which starts with 0" $
         parseCommand "rm 0000" `shouldBe` Right (CommandRemove 0)
       it "does not crash when given a large number" $
-        parseCommand "rm ffffffffffffffffffffffffffffffffffffffff" `shouldSatisfy` isRight
+        parseCommand "rm ffffffffffffffffffffffffffffffffffffffff" `shouldBe` Right (CommandRemove 0xffffffff)
       it "returns RemoveArgumentError if the command has no ID" $
         parseCommand "rm" `shouldBe` Left RemoveArgumentError
       it "returns RemoveArgumentError if the command has an empty ID" $

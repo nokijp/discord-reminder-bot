@@ -9,11 +9,11 @@ import Control.Monad
 import Data.Text (Text)
 import Data.Time.Calendar
 import Data.Time.LocalTime
-import Data.Word
+import Network.ReminderBot.HashCode
 
 data Command = CommandAdd CommandTime Text
              | CommandList
-             | CommandRemove Word64
+             | CommandRemove HashCode
                deriving (Show, Eq)
 
 data CommandTime = CommandTimeHM Int Int
