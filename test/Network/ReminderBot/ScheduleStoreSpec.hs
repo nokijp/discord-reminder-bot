@@ -6,6 +6,7 @@ module Network.ReminderBot.ScheduleStoreSpec
   ) where
 
 import Control.Monad
+import Data.Either
 import Data.Time.Calendar
 import Data.Time.Clock
 import Network.ReminderBot.HashCode
@@ -22,6 +23,7 @@ spec = do
     timeD d = UTCTime (fromGregorian 10000 1 d) 0
     messageHashCode :: MessageID -> HashCode
     messageHashCode = hashCode
+    brokenConfig = defaultScheduleStoreConfig { mongoHost = "localhost", mongoPort = 0 }
 
   describe "addSchedule" $ do
     resultAdd <- runIO $ do
@@ -190,3 +192,14 @@ spec = do
       resultRemove5 `shouldBe` False
       resultRemove6 `shouldBe` False
       resultGet `shouldMatchList` [Schedule 2 12 (messageHashCode 202) 1002 "message2", Schedule 1 13 (messageHashCode 102) 1003 "message3"]
+
+  describe "trySchedule" $ do
+    resultRight <- runIO $ do
+      let config = scheduleStoreConfig "collectionTry"
+      trySchedule $ addSchedule config (timeD 1) 1 11 101 1001 "message1"
+    it "wraps return values in Right" $ do
+      resultRight `shouldSatisfy` isRight
+
+    resultLeft <- runIO $ trySchedule $ addSchedule brokenConfig (timeD 1) 1 11 101 1001 "message1"
+    it "returns an error and does not crash" $ do
+      resultLeft `shouldSatisfy` isLeft

@@ -11,13 +11,16 @@ module Network.ReminderBot.ScheduleStore
   , listGuildSchedule
   , listChannelSchedule
   , removeSchedule
+  , trySchedule
   ) where
 
+import Control.Arrow
 import Control.Monad.Catch
 import Control.Monad.Trans
 import Data.Int
 import Data.Maybe
 import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Time.Clock
 import Data.Word
 import Database.MongoDB hiding (host)
@@ -148,6 +151,10 @@ runAction config action = liftIO $ bracket (connect host) close $ \pipe -> acces
   where
     host = Host (mongoHost config) (PortNumber $ fromIntegral $ mongoPort config)
     action' = ensureIndices config >> action
+
+
+trySchedule :: (MonadIO m, MonadCatch m) => m a -> m (Either Text a)
+trySchedule m = left (\e -> T.pack $ displayException (e :: SomeException)) <$> try m
 
 
 scheduleTimeLabel :: Label
