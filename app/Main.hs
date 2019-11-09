@@ -14,6 +14,7 @@ import qualified Data.Text as T
 import Discord
 import Logger
 import Network.ReminderBot.ScheduleStore
+import Reminder
 import System.Environment
 import System.Log.FastLogger
 
@@ -21,11 +22,12 @@ main :: IO ()
 main = do
   (token, logger) <- parseArguments <$> getArgs
 
+  let config = defaultScheduleStoreConfig
   bracket logger flushLogStr $ \logset ->
     retry logset $ \reset -> do
       err <- runDiscord $ def { discordToken = token
-                              , discordOnStart = const reset
-                              , discordOnEvent = receiveCommand logset defaultScheduleStoreConfig
+                              , discordOnStart = \dis -> reset >> void (forkRemindLoop logset config dis)
+                              , discordOnEvent = receiveCommand logset config
                               }
       putLog logset $ "error: " <> err
 
