@@ -12,6 +12,7 @@ dependencies:
 - SHA
 - text
 - time
+- transformers
 
 ghc-options:
 - -Wall
@@ -34,6 +35,8 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - discord-haskell
+    - fast-logger
     - reminder-bot
 
 tests:

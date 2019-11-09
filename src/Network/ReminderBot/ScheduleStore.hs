@@ -124,7 +124,7 @@ extractSchedule d = do
   let schedule = Schedule { scheduleGuild = fromIntegral (guild :: Int64)
                           , scheduleChannel = fromIntegral (channel :: Int64)
                           , scheduleIdentifier = fromIntegral (identifier :: Int32)
-                          , scheduleUser = fromIntegral (user :: Int32)
+                          , scheduleUser = fromIntegral (user :: Int64)
                           , scheduleMessage = message
                           }
   return (time, schedule)
