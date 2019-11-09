@@ -88,10 +88,11 @@ displaySchedules _ [] = "no reminders set"
 displaySchedules zone schedules = T.unlines $ displaySchedule zone <$> schedules
 
 displaySchedule :: TimeZone -> (UTCTime, Schedule) -> Text
-displaySchedule zone (time, schedule) = T.unwords [idText, timeText, messagePreview]
+displaySchedule zone (time, schedule) = T.unwords [idText, timeText, channelRef, messagePreview]
   where
-    idText = toText $ scheduleIdentifier schedule
-    timeText = T.pack $ formatTime defaultTimeLocale "%Y/%m/%d %T" $ utcToZonedTime zone time
+    idText = "`ID:" <> toText (scheduleIdentifier schedule) <> "`"
+    timeText = T.pack $ formatTime defaultTimeLocale "🗓 %Y/%m/%d %T" $ utcToZonedTime zone time
+    channelRef = "<#" <> toText (toInteger $ scheduleChannel schedule) <> ">"
     messagePreview = formatMessage 30 $ scheduleMessage schedule
 
 formatMessage :: Int -> Text -> Text
