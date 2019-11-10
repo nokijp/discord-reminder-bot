@@ -27,7 +27,7 @@ library:
   source-dirs: src
 
 executables:
-  reminder-bot-exe:
+  reminder-bot:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
