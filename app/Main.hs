@@ -9,6 +9,7 @@ import Control.Concurrent
 import Control.Exception
 import Control.Monad
 import Data.IORef
+import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as T
 import Discord
@@ -20,21 +21,23 @@ import System.Log.FastLogger
 
 main :: IO ()
 main = do
-  (token, logger) <- parseArguments <$> getArgs
+  token <- getEnvOrDefault (error "token is required")
+                           T.pack
+                           "REMINDER_BOT_DISCORD_TOKEN"
+  logger <- getEnvOrDefault (newStderrLoggerSet defaultBufSize)
+                            (newFileLoggerSet defaultBufSize)
+                            "REMINDER_BOT_LOG_FILE"
+  storeConfig <- getEnvOrDefault defaultScheduleStoreConfig
+                                 (\portString -> defaultScheduleStoreConfig { mongoPort = read portString })
+                                 "REMINDER_BOT_DB_PORT"
 
-  let config = defaultScheduleStoreConfig
   bracket logger flushLogStr $ \logset ->
     retry logset $ \reset -> do
       err <- runDiscord $ def { discordToken = token
-                              , discordOnStart = \dis -> reset >> void (forkRemindLoop logset config dis)
-                              , discordOnEvent = receiveCommand logset config
+                              , discordOnStart = \dis -> reset >> void (forkRemindLoop logset storeConfig dis)
+                              , discordOnEvent = receiveCommand logset storeConfig
                               }
       putLog logset $ "error: " <> err
-
-parseArguments :: [String] -> (Text, IO LoggerSet)
-parseArguments [tokenString, logFilePath] = (T.pack tokenString, newFileLoggerSet defaultBufSize logFilePath)
-parseArguments [tokenString] = (T.pack tokenString, newStderrLoggerSet defaultBufSize)
-parseArguments _ = fail "invalid arguments"
 
 retry :: LoggerSet -> (IO () -> IO ()) -> IO ()
 retry logset f = do
@@ -54,3 +57,8 @@ retryIntervalInSeconds n = if interval > maxInterval then maxInterval else inter
   where
     interval = 2 ^ n
     maxInterval = 1000
+
+getEnvOrDefault :: a -> (String -> a) -> String -> IO a
+getEnvOrDefault a f key = do
+  s <- fromMaybe "" <$> lookupEnv key
+  return $ if null s then a else f s
