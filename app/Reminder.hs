@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Reminder
   ( forkRemindLoop
   ) where
@@ -8,6 +10,7 @@ import Control.Monad.Catch
 import Control.Monad.Except
 import Control.Monad.Trans.Maybe
 import Data.Time.Clock
+import qualified Data.Text as T
 import Discord
 import Discord.Requests
 import Logger
@@ -37,7 +40,12 @@ runEveryMinute action = forever $ do
 
 postReminder :: MonadIO m => LoggerSet -> DiscordHandle -> Schedule -> MaybeT m ()
 postReminder logset dis schedule = do
-  status <- liftIO $ restCall dis $ CreateMessage (fromIntegral $ scheduleChannel schedule) (scheduleMessage schedule)
+  let
+    rawMessage = scheduleMessage schedule
+    userRef = "<@" <> (T.pack $ show $ toInteger $ scheduleUser schedule) <> ">"
+    connector = if "\n" `T.isInfixOf` rawMessage then "\n" else " "
+    message = userRef <> connector <> rawMessage
+  status <- liftIO $ restCall dis $ CreateMessage (fromIntegral $ scheduleChannel schedule) message
   either (\e -> putLog logset (show e) >> exitM) (const $ return ()) status
 
 runScheduleM :: (MonadIO m, MonadCatch m) => LoggerSet -> m a -> MaybeT m a
