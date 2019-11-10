@@ -21,15 +21,14 @@ import System.Log.FastLogger
 
 main :: IO ()
 main = do
-  token <- getEnvOrDefault (error "token is required")
-                           T.pack
-                           "REMINDER_BOT_DISCORD_TOKEN"
-  logger <- getEnvOrDefault (newStderrLoggerSet defaultBufSize)
-                            (newFileLoggerSet defaultBufSize)
-                            "REMINDER_BOT_LOG_FILE"
-  storeConfig <- getEnvOrDefault defaultScheduleStoreConfig
-                                 (\portString -> defaultScheduleStoreConfig { mongoPort = read portString })
-                                 "REMINDER_BOT_DB_PORT"
+  token <- getEnvOrDefault (error "token is required") T.pack "REMINDER_BOT_DISCORD_TOKEN"
+  logger <- getEnvOrDefault (newStderrLoggerSet defaultBufSize) (newFileLoggerSet defaultBufSize) "REMINDER_BOT_LOG_FILE"
+  port <- getEnvOrDefault Nothing (Just . read) "REMINDER_BOT_DB_PORT"
+  host <- getEnvOrDefault Nothing Just "REMINDER_BOT_DB_HOST"
+
+  let storeConfig = defaultScheduleStoreConfig { mongoHost = fromMaybe (mongoHost defaultScheduleStoreConfig) host
+                                               , mongoPort = fromMaybe (mongoPort defaultScheduleStoreConfig) port
+                                               }
 
   bracket logger flushLogStr $ \logset ->
     retry logset $ \reset -> do
