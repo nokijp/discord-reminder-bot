@@ -29,6 +29,7 @@ main = do
   let storeConfig = defaultScheduleStoreConfig { mongoHost = fromMaybe (mongoHost defaultScheduleStoreConfig) host
                                                , mongoPort = fromMaybe (mongoPort defaultScheduleStoreConfig) port
                                                }
+  waitStore 10 storeConfig
 
   bracket logger flushLogStr $ \logset ->
     retry logset $ \reset -> do
@@ -61,3 +62,9 @@ getEnvOrDefault :: a -> (String -> a) -> String -> IO a
 getEnvOrDefault a f key = do
   s <- fromMaybe "" <$> lookupEnv key
   return $ if null s then a else f s
+
+waitStore :: Int -> ScheduleStoreConfig -> IO ()
+waitStore 0 _ = fail "failed to connect to Store"
+waitStore n config = do
+  a <- isUp config
+  unless a $ threadDelay 1000000 >> waitStore (n - 1) config
