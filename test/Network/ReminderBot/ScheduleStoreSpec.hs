@@ -203,3 +203,12 @@ spec = do
     resultLeft <- runIO $ trySchedule $ addSchedule brokenConfig (timeD 1) 1 11 101 1001 "message1"
     it "returns an error and does not crash" $ do
       resultLeft `shouldSatisfy` isLeft
+
+  describe "isUp" $ do
+    upResult <- runIO $ isUp $ scheduleStoreConfig "isUp"
+    it "returns True" $ do
+      upResult `shouldBe` True
+
+    downResult <- runIO $ isUp brokenConfig
+    it "returns False" $ do
+      downResult `shouldBe` False

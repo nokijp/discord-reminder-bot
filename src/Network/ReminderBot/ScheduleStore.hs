@@ -12,6 +12,7 @@ module Network.ReminderBot.ScheduleStore
   , listChannelSchedule
   , removeSchedule
   , trySchedule
+  , isUp
   ) where
 
 import Control.Arrow
@@ -155,6 +156,9 @@ runAction config action = liftIO $ bracket (connect host) close $ \pipe -> acces
 
 trySchedule :: (MonadIO m, MonadCatch m) => m a -> m (Either Text a)
 trySchedule m = left (\e -> T.pack $ displayException (e :: SomeException)) <$> try m
+
+isUp :: (MonadIO m, MonadCatch m) => ScheduleStoreConfig -> m Bool
+isUp config = either (const False :: SomeException -> Bool) (const True) <$> (try $ runAction config $ return ())
 
 
 scheduleTimeLabel :: Label
