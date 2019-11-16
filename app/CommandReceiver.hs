@@ -67,8 +67,8 @@ runCommand logset config now guildID _ _ _ (Right CommandListGuild) =
   scheduleE logset $ displaySchedules (zonedTimeZone now) <$> listGuildSchedule config guildID
 runCommand logset config now _ channelID _ _ (Right CommandListChannel) =
   scheduleE logset $ displaySchedules (zonedTimeZone now) <$> listChannelSchedule config channelID
-runCommand logset config _ guildID _ _ _ (Right (CommandRemove scheduleID)) = do
-  isSucceeded <- scheduleE logset $ removeSchedule config guildID scheduleID
+runCommand logset config _ _ _ _ _ (Right (CommandRemove scheduleID)) = do
+  isSucceeded <- scheduleE logset $ removeSchedule config scheduleID
   if isSucceeded
   then return $ "removed: " <> toText scheduleID
   else throwE $ "not found: " <> toText scheduleID

@@ -171,27 +171,25 @@ spec = do
       resultOrdered `shouldBe` [(timeD 1, Schedule 1 11 (messageHashCode 101) 1001 "message1"), (timeD 2, Schedule 3 11 (messageHashCode 102) 1003 "message3")]
 
   describe "removeSchedule" $ do
-    (resultRemove1, resultRemove2, resultRemove3, resultRemove4, resultRemove5, resultRemove6, resultGet) <- runIO $ do
+    (resultRemove1, resultRemove2, resultRemove3, resultRemove4, resultRemove5, resultGet) <- runIO $ do
       let config = scheduleStoreConfig "collectionRemove"
-      resultRemove1 <- removeSchedule config 1 (messageHashCode 101)  -- []
+      resultRemove1 <- removeSchedule config (messageHashCode 101)  -- []
       _ <- addSchedule config (timeD 1) 1 11 101 1001 "message1"  -- [1]
       _ <- addSchedule config (timeD 1) 2 12 202 1002 "message2"  -- [1, 2, 3]
       _ <- addSchedule config (timeD 1) 1 13 102 1003 "message3"  -- [1, 2, 3]
-      resultRemove2 <- removeSchedule config 1 (messageHashCode 101)  -- [2, 3]
-      resultRemove3 <- removeSchedule config 1 (messageHashCode 101)  -- [2, 3]
-      resultRemove4 <- removeSchedule config 3 (messageHashCode 303)  -- [2, 3]
-      resultRemove5 <- removeSchedule config 1 (messageHashCode 202)  -- [2, 3]
-      resultRemove6 <- removeSchedule config 2 (messageHashCode 102)  -- [2, 3]
+      resultRemove2 <- removeSchedule config (messageHashCode 101)  -- [2, 3]
+      resultRemove3 <- removeSchedule config (messageHashCode 101)  -- [2, 3]
+      resultRemove4 <- removeSchedule config (messageHashCode 303)  -- [2, 3]
+      resultRemove5 <- removeSchedule config (messageHashCode 102)  -- [2]
       resultGet <- getScheduleBefore config (timeD 1)
-      return (resultRemove1, resultRemove2, resultRemove3, resultRemove4, resultRemove5, resultRemove6, resultGet)
+      return (resultRemove1, resultRemove2, resultRemove3, resultRemove4, resultRemove5, resultGet)
     it "removes a schedule and returns True if and only if the schedule exists" $ do
       resultRemove1 `shouldBe` False
       resultRemove2 `shouldBe` True
       resultRemove3 `shouldBe` False
       resultRemove4 `shouldBe` False
-      resultRemove5 `shouldBe` False
-      resultRemove6 `shouldBe` False
-      resultGet `shouldMatchList` [Schedule 2 12 (messageHashCode 202) 1002 "message2", Schedule 1 13 (messageHashCode 102) 1003 "message3"]
+      resultRemove5 `shouldBe` True
+      resultGet `shouldMatchList` [Schedule 2 12 (messageHashCode 202) 1002 "message2"]
 
   describe "trySchedule" $ do
     resultRight <- runIO $ do
