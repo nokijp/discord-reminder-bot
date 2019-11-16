@@ -9,7 +9,6 @@ dependencies:
 - mongoDB
 - mtl
 - parsec == 3.*
-- SHA
 - text
 - time
 - transformers

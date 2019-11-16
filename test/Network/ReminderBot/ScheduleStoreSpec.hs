@@ -22,7 +22,7 @@ spec = do
   let
     timeD d = UTCTime (fromGregorian 10000 1 d) 0
     messageHashCode :: MessageID -> HashCode
-    messageHashCode = hashCode
+    messageHashCode = hashCode . fromIntegral
     brokenConfig = defaultScheduleStoreConfig { mongoHost = "localhost", mongoPort = 0 }
 
   describe "addSchedule" $ do

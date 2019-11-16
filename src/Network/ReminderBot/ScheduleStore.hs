@@ -52,12 +52,12 @@ addSchedule :: MonadIO m
             -> m Schedule
 addSchedule config time guildID channelID messageID userID message = runAction config $ do
   let
-    identifier = hashCode messageID
+    identifier = hashCode $ fromIntegral messageID
     document = [ scheduleTimeLabel =: UTC time
                , guildLabel =: (Int64 $ fromIntegral guildID)
                , channelLabel =: (Int64 $ fromIntegral channelID)
                , sourceLabel =: (Int64 $ fromIntegral messageID)
-               , identifierLabel =: (Int32 $ fromIntegral identifier)
+               , identifierLabel =: (Int64 $ fromIntegral identifier)
                , userLabel =: (Int64 $ fromIntegral userID)
                , messageLabel =: String (scheduleMessage schedule)
                ]
@@ -104,7 +104,7 @@ removeSchedule :: MonadIO m => ScheduleStoreConfig -> GuildID -> HashCode -> m B
 removeSchedule config guildID identifier = runAction config $ do
   let
     sel = [ guildLabel =: (Int64 $ fromIntegral guildID)
-          , identifierLabel =: Int32 (fromIntegral identifier)
+          , identifierLabel =: Int64 (fromIntegral identifier)
           ]
     query :: Select a => a
     query = select sel $ collectionName config
@@ -124,7 +124,7 @@ extractSchedule d = do
   message <- d !? messageLabel
   let schedule = Schedule { scheduleGuild = fromIntegral (guild :: Int64)
                           , scheduleChannel = fromIntegral (channel :: Int64)
-                          , scheduleIdentifier = fromIntegral (identifier :: Int32)
+                          , scheduleIdentifier = fromIntegral (identifier :: Int64)
                           , scheduleUser = fromIntegral (user :: Int64)
                           , scheduleMessage = message
                           }
