@@ -155,7 +155,7 @@ trySchedule :: (MonadIO m, MonadCatch m) => m a -> m (Either Text a)
 trySchedule m = left (\e -> T.pack $ displayException (e :: SomeException)) <$> try m
 
 isUp :: (MonadIO m, MonadCatch m) => ScheduleStoreConfig -> m Bool
-isUp config = either (const False :: SomeException -> Bool) (const True) <$> (try $ runAction config $ return ())
+isUp config = either (const False :: SomeException -> Bool) (const True) <$> try (runAction config $ return ())
 
 
 scheduleTimeLabel :: Label

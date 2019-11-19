@@ -13,6 +13,7 @@ import Data.Time.Clock
 import qualified Data.Text as T
 import Discord
 import Discord.Requests
+import Exts
 import Logger
 import Network.ReminderBot.ScheduleStore
 import System.Log.FastLogger
@@ -42,7 +43,7 @@ postReminder :: MonadIO m => LoggerSet -> DiscordHandle -> Schedule -> MaybeT m 
 postReminder logset dis schedule = do
   let
     rawMessage = scheduleMessage schedule
-    userRef = "<@" <> (T.pack $ show $ toInteger $ scheduleUser schedule) <> ">"
+    userRef = "<@" <> toText (toInteger $ scheduleUser schedule) <> ">"
     connector = if "\n" `T.isInfixOf` rawMessage then "\n" else " "
     message = userRef <> connector <> rawMessage
   status <- liftIO $ restCall dis $ CreateMessage (fromIntegral $ scheduleChannel schedule) message
@@ -52,6 +53,3 @@ runScheduleM :: (MonadIO m, MonadCatch m) => LoggerSet -> m a -> MaybeT m a
 runScheduleM logset action = do
   res <- lift $ trySchedule action
   either (\e -> putLog logset e >> exitM) return res
-
-exitM :: Monad m => MaybeT m a
-exitM = MaybeT $ return Nothing

@@ -17,6 +17,7 @@ import Data.Time.LocalTime
 import Discord
 import Discord.Types
 import Discord.Requests
+import Exts
 import Logger
 import Network.ReminderBot.Command.Parser
 import Network.ReminderBot.ScheduleStore
@@ -107,19 +108,6 @@ scheduleE :: (MonadIO m, MonadCatch m) => LoggerSet -> m a -> ExceptT Text m a
 scheduleE logset m = do
   res <- lift $ trySchedule m
   either (\e -> putLog logset e >> throwE "internal error") return res
-
-maybeE :: Monad m => Text -> Maybe a -> ExceptT Text m a
-maybeE t = maybe (throwE t) return
-
-throwE :: Monad m => e -> ExceptT e m a
-throwE = ExceptT . return . Left
-
-maybeT :: Monad m => Maybe a -> MaybeT m a
-maybeT = MaybeT . return
-
-
-toText :: Show a => a -> Text
-toText = T.pack . show
 
 
 spyBotUserID :: DiscordHandle -> IO UserId
