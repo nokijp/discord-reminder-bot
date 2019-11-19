@@ -53,9 +53,9 @@ spec = do
     it "returns HashCode when given 0" $
       hashCode 0 `shouldBe` HashCode 0
     it "returns HashCode when given 1" $
-      hashCode 1 `shouldBe` HashCode 11400714819323198549
+      hashCode 1 `shouldBe` HashCode 11400714819323198485
     it "returns HashCode when given 0x0123456789abcdef" $
-      hashCode 0x0123456789abcdef `shouldBe` HashCode 0x5565019a05e1245b
+      hashCode 0x0123456789abcdef `shouldBe` HashCode 0x0c93a7b79aeda89b
 
   describe "hashCodeInv" $ do
     it "is the inverse of hashCode" $ property $ \n ->

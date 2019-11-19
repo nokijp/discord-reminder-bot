@@ -29,7 +29,7 @@ internalBitSize :: Num a => a
 internalBitSize = 64
 
 p :: Word64
-p = 11400714819323198549  -- nearest prime of 2 ^ 64 / φ
+p = 11400714819323198485  -- odd number closest to 2 ^ 64 / φ
 
 pInv :: Word64
-pInv = 6236490470931210493  -- p * pInv ≡ 1 (mod 2 ^ 64)
+pInv = 17428512612931826493  -- p * pInv ≡ 1 (mod 2 ^ 64)
