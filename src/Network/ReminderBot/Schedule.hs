@@ -27,4 +27,4 @@ data Schedule = Schedule { scheduleTime :: UTCTime
                          , scheduleMessage :: Text
                          } deriving (Show, Eq)
 
-newtype ScheduleID = ScheduleID HashCode deriving (Show, Read, Eq, Num)
+newtype ScheduleID = ScheduleID HashCode deriving (Show, Read, Eq)

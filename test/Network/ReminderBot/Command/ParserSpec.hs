@@ -6,6 +6,7 @@ module Network.ReminderBot.Command.ParserSpec
   ) where
 
 import Network.ReminderBot.Command.Parser
+import Network.ReminderBot.Schedule
 import Test.Hspec
 
 main :: IO ()
@@ -48,13 +49,13 @@ spec = do
 
     context "when given a \"rm\" command" $ do
       it "can parse" $
-        parseCommand "rm 1234abc" `shouldBe` Right (CommandRemove 0x1234abc)
+        parseCommand "rm 1234abc" `shouldBe` Right (CommandRemove $ ScheduleID 0x1234abc)
       it "can parse a command with extra spaces" $
-        parseCommand "    rm   1234abc    " `shouldBe` Right (CommandRemove 0x1234abc)
+        parseCommand "    rm   1234abc    " `shouldBe` Right (CommandRemove $ ScheduleID 0x1234abc)
       it "can parse a number which starts with 0" $
-        parseCommand "rm 0000" `shouldBe` Right (CommandRemove 0)
+        parseCommand "rm 0000" `shouldBe` Right (CommandRemove $ ScheduleID 0)
       it "does not crash when given a large number" $
-        parseCommand "rm ffffffffffffffffffffffffffffffffffffffff" `shouldBe` Right (CommandRemove 0xffffffffffffffff)
+        parseCommand "rm ffffffffffffffffffffffffffffffffffffffff" `shouldBe` Right (CommandRemove $ ScheduleID 0xffffffffffffffff)
       it "returns RemoveArgumentError if the command has no ID" $
         parseCommand "rm" `shouldBe` Left RemoveArgumentError
       it "returns RemoveArgumentError if the command has an empty ID" $
