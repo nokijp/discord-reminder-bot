@@ -11,7 +11,6 @@ import Data.Char
 import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Time.Clock
 import Data.Time.Format
 import Data.Time.LocalTime
 import Discord
@@ -62,8 +61,15 @@ runCommand logset config now guildID channelID messageID userID (Right (CommandA
   let
     zone = zonedTimeZone now
     time = localTimeToUTC zone localTime
-  schedule <- scheduleE logset $ addSchedule config time guildID channelID messageID userID message
-  return $ "added: " <> displaySchedule zone (time, schedule)
+    schedule = Schedule { scheduleTime = time
+                        , scheduleGuildID = guildID
+                        , scheduleChannelID = channelID
+                        , scheduleUserID = userID
+                        , scheduleMessageID = messageID
+                        , scheduleMessage = message
+                        }
+  scheduleID <- scheduleE logset $ addSchedule config schedule
+  return $ "added: " <> displaySchedule zone (scheduleID, schedule)
 runCommand logset config now guildID _ _ _ (Right CommandListGuild) =
   scheduleE logset $ displaySchedules (zonedTimeZone now) <$> listGuildSchedule config guildID
 runCommand logset config now _ channelID _ _ (Right CommandListChannel) =
@@ -84,16 +90,16 @@ runCommand _ _ _ _ _ _ _ (Left errorType) = errorMessage errorType
     listUsage = "ls [all]"
     removeUsage = "rm {ID}"
 
-displaySchedules :: TimeZone -> [(UTCTime, Schedule)] -> Text
+displaySchedules :: TimeZone -> [(ScheduleID, Schedule)] -> Text
 displaySchedules _ [] = "no reminders set"
 displaySchedules zone schedules = T.unlines $ displaySchedule zone <$> schedules
 
-displaySchedule :: TimeZone -> (UTCTime, Schedule) -> Text
-displaySchedule zone (time, schedule) = T.unwords [idText, timeText, channelRef, messagePreview]
+displaySchedule :: TimeZone -> (ScheduleID, Schedule) -> Text
+displaySchedule zone (scheduleID, schedule) = T.unwords [idText, timeText, channelRef, messagePreview]
   where
-    idText = "`ID:" <> toText (scheduleIdentifier schedule) <> "`"
-    timeText = T.pack $ formatTime defaultTimeLocale "🗓 %Y/%m/%d %T" $ utcToZonedTime zone time
-    channelRef = "<#" <> toText (toInteger $ scheduleChannel schedule) <> ">"
+    idText = "`ID:" <> toText scheduleID <> "`"
+    timeText = T.pack $ formatTime defaultTimeLocale "🗓 %Y/%m/%d %T" $ utcToZonedTime zone $ scheduleTime schedule
+    channelRef = "<#" <> toText (toInteger $ scheduleChannelID schedule) <> ">"
     messagePreview = formatMessage 30 $ scheduleMessage schedule
 
 formatMessage :: Int -> Text -> Text

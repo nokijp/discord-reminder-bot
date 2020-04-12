@@ -11,7 +11,7 @@ import Data.Either
 import Data.Text (Text)
 import qualified Data.Text as T
 import Network.ReminderBot.Command.Types
-import Network.ReminderBot.HashCode
+import Network.ReminderBot.Schedule
 import Numeric
 import Text.Parsec
 import Text.Parsec.Text
@@ -51,7 +51,7 @@ addCommandParser = CommandAdd <$> timeParser <*> (skipMany1 space *> messagePars
 removeCommandParser :: Parser Command
 removeCommandParser = CommandRemove <$> (sourceParser <* eof)
   where
-    sourceParser :: Parser HashCode
-    sourceParser = forceReadHex <$> many1 hexDigit
+    sourceParser :: Parser ScheduleID
+    sourceParser = ScheduleID . forceReadHex <$> many1 hexDigit
     forceReadHex :: (Eq a, Num a) => String -> a
     forceReadHex s = let [(n, "")] = readHex s in n

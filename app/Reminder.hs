@@ -24,7 +24,7 @@ forkRemindLoop logset config dis = forkIO $ runEveryMinute $ remind logset confi
 remind :: LoggerSet -> ScheduleStoreConfig -> DiscordHandle -> UTCTime -> IO ()
 remind logset config dis now = void $ runMaybeT $ do
   schedules <- runScheduleM logset $ getScheduleBefore config now
-  mapM_ (postReminder logset dis) schedules
+  mapM_ (postReminder logset dis) (snd <$> schedules)
   _ <- runScheduleM logset $ removeScheduleBefore config now
   return ()
 
@@ -43,10 +43,10 @@ postReminder :: MonadIO m => LoggerSet -> DiscordHandle -> Schedule -> MaybeT m 
 postReminder logset dis schedule = do
   let
     rawMessage = scheduleMessage schedule
-    userRef = "<@" <> toText (toInteger $ scheduleUser schedule) <> ">"
+    userRef = "<@" <> toText (toInteger $ scheduleUserID schedule) <> ">"
     connector = if "\n" `T.isInfixOf` rawMessage then "\n" else " "
     message = userRef <> connector <> rawMessage
-  status <- liftIO $ restCall dis $ CreateMessage (fromIntegral $ scheduleChannel schedule) message
+  status <- liftIO $ restCall dis $ CreateMessage (fromIntegral $ scheduleChannelID schedule) message
   either (\e -> putLog logset (show e) >> exitM) (const $ return ()) status
 
 runScheduleM :: (MonadIO m, MonadCatch m) => LoggerSet -> m a -> MaybeT m a

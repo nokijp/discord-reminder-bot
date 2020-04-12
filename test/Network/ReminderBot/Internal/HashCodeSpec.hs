@@ -1,10 +1,10 @@
-module Network.ReminderBot.HashCodeSpec
+module Network.ReminderBot.Internal.HashCodeSpec
   ( main
   , spec
   ) where
 
 import Control.Monad
-import Network.ReminderBot.HashCode
+import Network.ReminderBot.Internal.HashCode
 import Test.Hspec
 import Test.QuickCheck
 

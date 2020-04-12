@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Network.ReminderBot.HashCode
+module Network.ReminderBot.Internal.HashCode
   ( HashCode(..)
   , hashCode
   , hashCodeInv

@@ -9,12 +9,12 @@ import Control.Monad
 import Data.Text (Text)
 import Data.Time.Calendar
 import Data.Time.LocalTime
-import Network.ReminderBot.HashCode
+import Network.ReminderBot.Schedule
 
 data Command = CommandAdd CommandTime Text
              | CommandListGuild
              | CommandListChannel
-             | CommandRemove HashCode
+             | CommandRemove ScheduleID
                deriving (Show, Eq)
 
 data CommandTime = CommandTimeHM Int Int

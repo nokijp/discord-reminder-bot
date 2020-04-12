@@ -25,7 +25,7 @@ import qualified Data.Text as T
 import Data.Time.Clock
 import Data.Word
 import Database.MongoDB hiding (host)
-import Network.ReminderBot.HashCode
+import Network.ReminderBot.Internal.HashCode
 import Network.ReminderBot.Schedule
 
 data ScheduleStoreConfig = ScheduleStoreConfig { mongoHost :: String
@@ -43,64 +43,52 @@ defaultScheduleStoreConfig = ScheduleStoreConfig { mongoHost = "localhost"
 
 addSchedule :: MonadIO m
             => ScheduleStoreConfig
-            -> UTCTime
-            -> GuildID
-            -> ChannelID
-            -> MessageID
-            -> UserID
-            -> Text
-            -> m Schedule
-addSchedule config time guildID channelID messageID userID message = runAction config $ do
-  let
-    identifier = hashCode $ fromIntegral messageID
-    document = [ scheduleTimeLabel =: UTC time
-               , guildLabel =: (Int64 $ fromIntegral guildID)
-               , channelLabel =: (Int64 $ fromIntegral channelID)
-               , sourceLabel =: (Int64 $ fromIntegral messageID)
-               , userLabel =: (Int64 $ fromIntegral userID)
-               , messageLabel =: String (scheduleMessage schedule)
-               ]
-    schedule = Schedule { scheduleGuild = guildID
-                        , scheduleChannel = channelID
-                        , scheduleIdentifier = identifier
-                        , scheduleUser = userID
-                        , scheduleMessage = message
-                        }
+            -> Schedule
+            -> m ScheduleID
+addSchedule config schedule = runAction config $ do
+  let document = [ scheduleTimeLabel =: UTC (scheduleTime schedule)
+                 , guildLabel =: (Int64 $ fromIntegral $ scheduleGuildID schedule)
+                 , channelLabel =: (Int64 $ fromIntegral $ scheduleChannelID schedule)
+                 , sourceLabel =: (Int64 $ fromIntegral $ scheduleMessageID schedule)
+                 , userLabel =: (Int64 $ fromIntegral $ scheduleUserID schedule)
+                 , messageLabel =: String (scheduleMessage schedule)
+                 ]
   insert_ (collectionName config) document
 
-  return schedule
+  let identifier = ScheduleID $ hashCode $ fromIntegral $ scheduleMessageID schedule
+  return identifier
 
-getFirstSchedule :: MonadIO m => ScheduleStoreConfig -> m (Maybe (UTCTime, Schedule))
+getFirstSchedule :: MonadIO m => ScheduleStoreConfig -> m (Maybe (ScheduleID, Schedule))
 getFirstSchedule config = runAction config $ do
   let query = (select [] $ collectionName config) { sort = [scheduleTimeLabel := Int32 1] }
   documentMaybe <- findOne query
   return $ extractSchedule =<< documentMaybe
 
-getScheduleBefore :: MonadIO m => ScheduleStoreConfig -> UTCTime -> m [Schedule]
+getScheduleBefore :: MonadIO m => ScheduleStoreConfig -> UTCTime -> m [(ScheduleID, Schedule)]
 getScheduleBefore config time = runAction config $ do
   cursor <- find $ selectBefore config time
   documents <- allDocuments cursor
-  return $ snd <$> mapMaybe extractSchedule documents
+  return $ mapMaybe extractSchedule documents
 
 removeScheduleBefore :: MonadIO m => ScheduleStoreConfig -> UTCTime -> m ()
 removeScheduleBefore config time = runAction config $
   delete $ selectBefore config time
 
-listGuildSchedule :: MonadIO m => ScheduleStoreConfig -> GuildID -> m [(UTCTime, Schedule)]
+listGuildSchedule :: MonadIO m => ScheduleStoreConfig -> GuildID -> m [(ScheduleID, Schedule)]
 listGuildSchedule config guildID = listSchedule config [guildLabel =: Int64 (fromIntegral guildID)]
 
-listChannelSchedule :: MonadIO m => ScheduleStoreConfig -> ChannelID -> m [(UTCTime, Schedule)]
+listChannelSchedule :: MonadIO m => ScheduleStoreConfig -> ChannelID -> m [(ScheduleID, Schedule)]
 listChannelSchedule config channelID = listSchedule config [channelLabel =: Int64 (fromIntegral channelID)]
 
-listSchedule :: MonadIO m => ScheduleStoreConfig -> Selector -> m [(UTCTime, Schedule)]
+listSchedule :: MonadIO m => ScheduleStoreConfig -> Selector -> m [(ScheduleID, Schedule)]
 listSchedule config sel = runAction config $ do
   let query = (select sel $ collectionName config) { sort = [scheduleTimeLabel := Int32 1] }
   cursor <- find query
   documents <- allDocuments cursor
   return $ mapMaybe extractSchedule documents
 
-removeSchedule :: MonadIO m => ScheduleStoreConfig -> HashCode -> m Bool
-removeSchedule config identifier = runAction config $ do
+removeSchedule :: MonadIO m => ScheduleStoreConfig -> ScheduleID -> m Bool
+removeSchedule config (ScheduleID identifier) = runAction config $ do
   let
     source = hashCodeInv identifier
     sel = [sourceLabel =: Int64 (fromIntegral source)]
@@ -112,7 +100,7 @@ removeSchedule config identifier = runAction config $ do
     Nothing -> return False
 
 
-extractSchedule :: Document -> Maybe (UTCTime, Schedule)
+extractSchedule :: Document -> Maybe (ScheduleID, Schedule)
 extractSchedule d = do
   time <- d !? scheduleTimeLabel
   guild <- d !? guildLabel
@@ -120,13 +108,16 @@ extractSchedule d = do
   source <- d !? sourceLabel
   user <- d !? userLabel
   message <- d !? messageLabel
-  let schedule = Schedule { scheduleGuild = fromIntegral (guild :: Int64)
-                          , scheduleChannel = fromIntegral (channel :: Int64)
-                          , scheduleIdentifier = hashCode $ fromIntegral (source :: Int64)
-                          , scheduleUser = fromIntegral (user :: Int64)
-                          , scheduleMessage = message
-                          }
-  return (time, schedule)
+  let
+    schedule = Schedule { scheduleTime = time
+                        , scheduleGuildID = fromIntegral (guild :: Int64)
+                        , scheduleChannelID = fromIntegral (channel :: Int64)
+                        , scheduleUserID = fromIntegral (user :: Int64)
+                        , scheduleMessageID = fromIntegral (source :: Int64)
+                        , scheduleMessage = message
+                        }
+    identifier = ScheduleID $ hashCode $ fromIntegral (source :: Int64)
+  return (identifier, schedule)
 
 selectBefore :: Select a => ScheduleStoreConfig -> UTCTime -> a
 selectBefore config time = select [scheduleTimeLabel =: ["$lte" =: UTC time]] $ collectionName config
