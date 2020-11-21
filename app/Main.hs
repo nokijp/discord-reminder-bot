@@ -8,6 +8,7 @@ import CommandReceiver
 import Control.Concurrent
 import Control.Exception
 import Control.Monad
+import Control.Monad.Trans
 import Data.IORef
 import Data.Maybe
 import Data.Text (Text)
@@ -34,7 +35,7 @@ main = do
   bracket logger flushLogStr $ \logset ->
     retry logset $ \reset -> do
       err <- runDiscord $ def { discordToken = token
-                              , discordOnStart = \dis -> reset >> void (forkRemindLoop logset storeConfig dis)
+                              , discordOnStart = lift reset >> void (forkRemindLoop logset storeConfig)
                               , discordOnEvent = receiveCommand logset storeConfig
                               }
       putLog logset $ "error: " <> err

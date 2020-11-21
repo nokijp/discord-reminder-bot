@@ -22,9 +22,9 @@ import Network.ReminderBot.Command.Parser
 import Network.ReminderBot.ScheduleStore
 import System.Log.FastLogger
 
-receiveCommand :: LoggerSet -> ScheduleStoreConfig -> DiscordHandle -> Event -> IO ()
-receiveCommand logset config dis (MessageCreate m) | isNotFromBot m = fmap (fromMaybe ()) $ runMaybeT $ do
-  botUserID <- lift $ spyBotUserID dis
+receiveCommand :: LoggerSet -> ScheduleStoreConfig -> Event -> DiscordHandler ()
+receiveCommand logset config (MessageCreate m) | isNotFromBot m = fmap (fromMaybe ()) $ runMaybeT $ do
+  botUserID <- lift spyBotUserID
   let botUserIDText = toText (toInteger botUserID)
   command <- maybeT $ parseMessage botUserIDText $ messageText m
   guildID <- maybeT $ fromIntegral <$> messageGuild m
@@ -35,9 +35,9 @@ receiveCommand logset config dis (MessageCreate m) | isNotFromBot m = fmap (from
   now <- liftIO getZonedTime
   responseEither <- lift $ runExceptT $ runCommand logset config now guildID channelID messageID userID command
   let response = either ("error: " <>) id responseEither
-  status <- lift $ restCall dis $ CreateMessage (messageChannel m) response
+  status <- lift $ restCall $ CreateMessage (messageChannel m) response
   either (putLog logset . show) (const $ return ()) status
-receiveCommand _ _ _ _ = return ()
+receiveCommand _ _ _ = return ()
 
 runCommand :: (MonadIO m, MonadCatch m)
            => LoggerSet
@@ -109,8 +109,8 @@ scheduleE logset m = do
   either (\e -> putLog logset e >> throwE "internal error") return res
 
 
-spyBotUserID :: DiscordHandle -> IO UserId
-spyBotUserID dis = (\(Cache user _ _ _) -> userId user) <$> readCache dis
+spyBotUserID :: DiscordHandler UserId
+spyBotUserID = (\(Cache user _ _ _) -> userId user) <$> readCache
 
 isNotFromBot :: Message -> Bool
 isNotFromBot = not . userIsBot . messageAuthor
