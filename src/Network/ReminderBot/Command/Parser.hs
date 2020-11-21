@@ -3,9 +3,10 @@
 
 module Network.ReminderBot.Command.Parser
   ( module Network.ReminderBot.Command.Types
-  , parseCommand
+  , parseMessage
   ) where
 
+import qualified Control.Applicative as A
 import Control.Arrow
 import Data.Either
 import Data.Text (Text)
@@ -15,6 +16,12 @@ import Network.ReminderBot.Schedule
 import Numeric
 import Text.Parsec
 import Text.Parsec.Text
+
+parseMessage :: Text -> Text -> Maybe (Either CommandError Command)
+parseMessage botUserID message = parseCommand <$> messageBody
+  where
+    messageBody =     T.stripPrefix ("<@" <> botUserID <> ">") message
+                A.<|> T.stripPrefix ("<@!" <> botUserID <> ">") message
 
 parseCommand :: Text -> Either CommandError Command
 parseCommand input =

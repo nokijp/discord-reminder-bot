@@ -25,7 +25,8 @@ import System.Log.FastLogger
 receiveCommand :: LoggerSet -> ScheduleStoreConfig -> DiscordHandle -> Event -> IO ()
 receiveCommand logset config dis (MessageCreate m) | isNotFromBot m = fmap (fromMaybe ()) $ runMaybeT $ do
   botUserID <- lift $ spyBotUserID dis
-  command <- maybeT $ parseMessage botUserID $ messageText m
+  let botUserIDText = toText (toInteger botUserID)
+  command <- maybeT $ parseMessage botUserIDText $ messageText m
   guildID <- maybeT $ fromIntegral <$> messageGuild m
   let
     channelID = fromIntegral $ messageChannel m
@@ -37,14 +38,6 @@ receiveCommand logset config dis (MessageCreate m) | isNotFromBot m = fmap (from
   status <- lift $ restCall dis $ CreateMessage (messageChannel m) response
   either (putLog logset . show) (const $ return ()) status
 receiveCommand _ _ _ _ = return ()
-
-parseMessage :: UserId -> Text -> Maybe (Either CommandError Command)
-parseMessage botUserID message = if prefix `T.isPrefixOf` message
-                                 then Just $ parseCommand commandText
-                                 else Nothing
-  where
-    prefix = "<@" <> toText (toInteger botUserID) <> ">"
-    commandText = T.drop (T.length prefix) message
 
 runCommand :: (MonadIO m, MonadCatch m)
            => LoggerSet
