@@ -1,20 +1,23 @@
-FROM ubuntu:18.04 AS builder
-RUN apt update && \
-    DEBIAN_FRONTEND=noninteractive apt install -y wget && \
-    wget -qO- https://get.haskellstack.org/ | sh
+FROM haskell:8.8.4-buster AS builder
+
+# initialize stack
+RUN stack install --resolver=lts-16.20 base
+
+# install dependencies
 WORKDIR /tmp
-RUN stack setup --resolver=lts-14.10
 COPY stack.yaml .
 COPY package.yaml .
-RUN stack build --dry-run
+RUN stack build --only-dependencies --system-ghc
+
+# build
 WORKDIR /reminder-bot
 COPY . .
-RUN stack install
+RUN stack build --copy-bins --system-ghc
 
-FROM ubuntu:18.04
-RUN apt update && \
-    DEBIAN_FRONTEND=noninteractive apt install -y ca-certificates netbase tzdata && \
-    ln -sf /usr/share/zoneinfo/Asia/Tokyo /etc/localtime && \
-    rm -rf /var/lib/apt/lists/*
+
+FROM debian:buster-slim
+RUN apt-get update && apt-get install -y netbase ca-certificates \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /root/.local/bin/reminder-bot .
 CMD /reminder-bot
