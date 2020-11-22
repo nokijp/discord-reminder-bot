@@ -19,6 +19,7 @@ import Discord.Requests
 import Exts
 import Logger
 import Network.ReminderBot.Command.Parser
+import Network.ReminderBot.Schedule
 import Network.ReminderBot.ScheduleStore
 import System.Log.FastLogger
 
@@ -90,7 +91,7 @@ displaySchedules zone schedules = T.unlines $ displaySchedule zone <$> schedules
 displaySchedule :: TimeZone -> (ScheduleID, Schedule) -> Text
 displaySchedule zone (scheduleID, schedule) = T.unwords [idText, timeText, channelRef, messagePreview]
   where
-    idText = "`ID:" <> toText scheduleID <> "`"
+    idText = "`ID:" <> toText (scheduleIDToHashCode scheduleID) <> "`"
     timeText = T.pack $ formatTime defaultTimeLocale "🗓 %Y/%m/%d %T" $ utcToZonedTime zone $ scheduleTime schedule
     channelRef = "<#" <> toText (toInteger $ scheduleChannelID schedule) <> ">"
     messagePreview = formatMessage 30 $ scheduleMessage schedule

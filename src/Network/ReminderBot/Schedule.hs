@@ -7,6 +7,7 @@ module Network.ReminderBot.Schedule
   , UserID(..)
   , Schedule(..)
   , ScheduleID(..)
+  , scheduleIDToHashCode
   ) where
 
 import Data.Binary
@@ -27,4 +28,7 @@ data Schedule = Schedule { scheduleTime :: UTCTime
                          , scheduleMessage :: Text
                          } deriving (Show, Eq)
 
-newtype ScheduleID = ScheduleID HashCode deriving (Show, Read, Eq)
+newtype ScheduleID = ScheduleID HashCode deriving (Show, Eq)
+
+scheduleIDToHashCode :: ScheduleID -> HashCode
+scheduleIDToHashCode (ScheduleID code) = code
