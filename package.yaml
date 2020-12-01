@@ -2,6 +2,7 @@ name:                reminder-bot
 version:             0.1.0.0
 
 dependencies:
+- aeson
 - base >= 4.7 && < 5
 - binary
 - bytestring
@@ -9,6 +10,7 @@ dependencies:
 - mongoDB
 - mtl
 - parsec == 3.*
+- req
 - text
 - time
 - transformers

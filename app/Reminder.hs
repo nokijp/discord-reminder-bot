@@ -17,6 +17,7 @@ import Discord.Requests
 import Exts
 import Logger
 import Network.ReminderBot.ScheduleStore
+import RequestExts
 import System.Log.FastLogger
 
 forkRemindLoop :: LoggerSet -> ScheduleStoreConfig -> DiscordHandler ThreadId
@@ -43,11 +44,21 @@ runEveryMinute action = forever $ do
 postReminder :: LoggerSet -> Schedule -> MaybeT DiscordHandler ()
 postReminder logset schedule = do
   let
+    channelID = fromIntegral $ scheduleChannelID schedule
+    messageReferenceID = fromIntegral $ scheduleMessageID schedule
+  messageReference <- lift $ restCall $ GetChannelMessage (channelID, messageReferenceID)
+  messageExists <- case messageReference of
+                     Right _ -> return True
+                     Left (RestCallErrorCode 404 _ _) -> return False
+                     Left e -> putLog logset (show e) >> exitM
+  let
     rawMessage = scheduleMessage schedule
+    refMessage = userRef <> connector <> rawMessage
     userRef = "<@" <> toText (toInteger $ scheduleUserID schedule) <> ">"
     connector = if "\n" `T.isInfixOf` rawMessage then "\n" else " "
-    message = userRef <> connector <> rawMessage
-  status <- lift $ restCall $ CreateMessage (fromIntegral $ scheduleChannelID schedule) message
+  status <- lift $ if messageExists
+                   then restCall $ CreateReply channelID messageReferenceID rawMessage
+                   else restCall $ CreateMessage channelID refMessage
   either (\e -> putLog logset (show e) >> exitM) (const $ return ()) status
 
 runScheduleM :: (MonadIO m, MonadCatch m) => LoggerSet -> m a -> MaybeT m a
