@@ -15,12 +15,12 @@ import Data.Time.Format
 import Data.Time.LocalTime
 import Discord
 import Discord.Types
-import Discord.Requests
 import Exts
 import Logger
 import Network.ReminderBot.Command.Parser
 import Network.ReminderBot.Schedule
 import Network.ReminderBot.ScheduleStore
+import RequestExts
 import System.Log.FastLogger
 
 receiveCommand :: LoggerSet -> ScheduleStoreConfig -> Event -> DiscordHandler ()
@@ -36,7 +36,7 @@ receiveCommand logset config (MessageCreate m) | isNotFromBot m = fmap (fromMayb
   now <- liftIO getZonedTime
   responseEither <- lift $ runExceptT $ runCommand logset config now guildID channelID messageID userID command
   let response = either ("error: " <>) id responseEither
-  status <- lift $ restCall $ CreateMessage (messageChannel m) response
+  status <- lift $ restCall $ CreateReply (messageChannel m) (messageId m) response
   either (putLog logset . show) (const $ return ()) status
 receiveCommand _ _ _ = return ()
 
