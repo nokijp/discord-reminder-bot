@@ -51,7 +51,7 @@ runCommand :: (MonadIO m, MonadCatch m)
            -> Either CommandError Command
            -> ExceptT Text m Text
 runCommand logset config now guildID channelID messageID userID (Right (CommandAdd commandTime message)) = do
-  localTime <- maybeE "invalid date" $ commandTimeToLocalTime (zonedTimeToLocalTime now) commandTime
+  localTime <- liftEither $ commandTimeToLocalTime (zonedTimeToLocalTime now) commandTime
   let
     zone = zonedTimeZone now
     time = localTimeToUTC zone localTime

@@ -2,7 +2,8 @@
 {-# LANGUAGE TupleSections #-}
 
 module Network.ReminderBot.Command.Parser
-  ( module Network.ReminderBot.Command.Types
+  ( module Network.ReminderBot.Command.Time
+  , module Network.ReminderBot.Command.Types
   , parseMessage
   ) where
 
@@ -11,6 +12,7 @@ import Control.Arrow
 import Data.Either
 import Data.Text (Text)
 import qualified Data.Text as T
+import Network.ReminderBot.Command.Time
 import Network.ReminderBot.Command.Types
 import Network.ReminderBot.Schedule
 import Numeric
