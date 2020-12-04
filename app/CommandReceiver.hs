@@ -11,6 +11,7 @@ import Data.Char
 import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Time.Clock
 import Data.Time.Format
 import Data.Time.LocalTime
 import Discord
@@ -51,7 +52,7 @@ runCommand :: (MonadIO m, MonadCatch m)
            -> Either CommandError Command
            -> ExceptT Text m Text
 runCommand logset config now guildID channelID messageID userID (Right (CommandAdd commandTime message)) = do
-  localTime <- maybeE "invalid date" $ commandTimeToLocalTime (zonedTimeToLocalTime now) commandTime
+  localTime <- liftEither $ commandTimeToLocalTime (zonedTimeToLocalTime now) commandTime
   let
     zone = zonedTimeZone now
     time = localTimeToUTC zone localTime
@@ -63,11 +64,11 @@ runCommand logset config now guildID channelID messageID userID (Right (CommandA
                         , scheduleMessage = message
                         }
   scheduleID <- scheduleE logset $ addSchedule config schedule
-  return $ "added: " <> displaySchedule zone (scheduleID, schedule)
+  return $ "added: " <> displaySchedule (zonedTimeToUTC now) zone (scheduleID, schedule)
 runCommand logset config now guildID _ _ _ (Right CommandListGuild) =
-  scheduleE logset $ displaySchedules (zonedTimeZone now) <$> listGuildSchedule config guildID
+  scheduleE logset $ displaySchedules (zonedTimeToUTC now) (zonedTimeZone now) <$> listGuildSchedule config guildID
 runCommand logset config now _ channelID _ _ (Right CommandListChannel) =
-  scheduleE logset $ displaySchedules (zonedTimeZone now) <$> listChannelSchedule config channelID
+  scheduleE logset $ displaySchedules (zonedTimeToUTC now) (zonedTimeZone now) <$> listChannelSchedule config channelID
 runCommand logset config _ _ _ _ _ (Right (CommandRemove scheduleID)) = do
   isSucceeded <- scheduleE logset $ removeSchedule config scheduleID
   if isSucceeded
@@ -84,15 +85,16 @@ runCommand _ _ _ _ _ _ _ (Left errorType) = errorMessage errorType
     listUsage = "ls [all]"
     removeUsage = "rm {ID}"
 
-displaySchedules :: TimeZone -> [(ScheduleID, Schedule)] -> Text
-displaySchedules _ [] = "no reminders set"
-displaySchedules zone schedules = T.unlines $ displaySchedule zone <$> schedules
+displaySchedules :: UTCTime -> TimeZone -> [(ScheduleID, Schedule)] -> Text
+displaySchedules _ _ [] = "no reminders"
+displaySchedules now zone schedules = T.unlines $ displaySchedule now zone <$> schedules
 
-displaySchedule :: TimeZone -> (ScheduleID, Schedule) -> Text
-displaySchedule zone (scheduleID, schedule) = T.unwords [idText, timeText, channelRef, messagePreview]
+displaySchedule :: UTCTime -> TimeZone -> (ScheduleID, Schedule) -> Text
+displaySchedule now zone (scheduleID, schedule) = T.unwords [idText, timeText, remainingTime, channelRef, messagePreview]
   where
     idText = "`ID:" <> toText (scheduleIDToHashCode scheduleID) <> "`"
     timeText = T.pack $ formatTime defaultTimeLocale "🗓 %Y/%m/%d %T" $ utcToZonedTime zone $ scheduleTime schedule
+    remainingTime = T.pack $ formatTime defaultTimeLocale "(%dd %0H:%0M remaining)" $ diffUTCTime (scheduleTime schedule) now
     channelRef = "<#" <> toText (toInteger $ scheduleChannelID schedule) <> ">"
     messagePreview = formatMessage 30 $ scheduleMessage schedule
 

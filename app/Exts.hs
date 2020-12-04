@@ -1,6 +1,5 @@
 module Exts
-  ( maybeE
-  , throwE
+  ( throwE
   , maybeT
   , exitM
   , toText
@@ -10,9 +9,6 @@ import Control.Monad.Except
 import Control.Monad.Trans.Maybe
 import Data.Text (Text)
 import qualified Data.Text as T
-
-maybeE :: Monad m => e -> Maybe a -> ExceptT e m a
-maybeE e = maybe (throwE e) return
 
 throwE :: Monad m => e -> ExceptT e m a
 throwE = ExceptT . return . Left
