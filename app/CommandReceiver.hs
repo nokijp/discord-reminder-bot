@@ -14,6 +14,7 @@ import qualified Data.Text as T
 import Data.Time.Clock
 import Data.Time.Format
 import Data.Time.LocalTime
+import Data.Version
 import Discord
 import Discord.Types
 import Exts
@@ -21,6 +22,7 @@ import Logger
 import Network.ReminderBot.Command.Parser
 import Network.ReminderBot.Schedule
 import Network.ReminderBot.ScheduleStore
+import Paths_reminder_bot
 import RequestExts
 import System.Log.FastLogger
 
@@ -79,10 +81,11 @@ runCommand _ _ _ _ _ _ _ (Left errorType) = errorMessage errorType
     errorMessage AddArgumentError    = throwE addUsage
     errorMessage ListArgumentError   = throwE listUsage
     errorMessage RemoveArgumentError = throwE removeUsage
-    errorMessage UnknownCommandError = return $ T.unlines [addUsage, listUsage, removeUsage]
-    addUsage = "add [[Y/]M/D] h:m {MESSAGE}"
-    listUsage = "ls [all]"
-    removeUsage = "rm {ID}"
+    errorMessage UnknownCommandError = return $ T.unlines [versionInfo, addUsage, listUsage, removeUsage]
+    versionInfo = "**reminder-bot** " <> T.pack (showVersion version)
+    addUsage = "`add [[Y/]M/D] h:m {MESSAGE}`"
+    listUsage = "`ls [all]`"
+    removeUsage = "`rm {ID}`"
 
 displaySchedules :: UTCTime -> TimeZone -> [(ScheduleID, Schedule)] -> Text
 displaySchedules _ _ [] = "no reminders"
