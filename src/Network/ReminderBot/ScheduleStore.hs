@@ -88,9 +88,9 @@ listSchedule config sel = runAction config $ do
   return $ mapMaybe extractSchedule documents
 
 removeSchedule :: MonadIO m => ScheduleStoreConfig -> ScheduleID -> m Bool
-removeSchedule config identifier = runAction config $ do
+removeSchedule config (ScheduleID identifier) = runAction config $ do
   let
-    source = hashCodeInv $ scheduleIDToHashCode identifier
+    source = hashCodeInv identifier
     sel = [sourceLabel =: Int64 (fromIntegral source)]
     query :: Select a => a
     query = select sel $ collectionName config

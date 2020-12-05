@@ -27,8 +27,7 @@ import System.Log.FastLogger
 receiveCommand :: LoggerSet -> ScheduleStoreConfig -> Event -> DiscordHandler ()
 receiveCommand logset config (MessageCreate m) | isNotFromBot m = fmap (fromMaybe ()) $ runMaybeT $ do
   botUserID <- lift spyBotUserID
-  let botUserIDText = toText (toInteger botUserID)
-  command <- maybeT $ parseMessage botUserIDText $ messageText m
+  command <- maybeT $ parseMessage (toText botUserID) $ messageText m
   guildID <- maybeT $ fromIntegral <$> messageGuild m
   let
     channelID = fromIntegral $ messageChannel m
@@ -92,10 +91,10 @@ displaySchedules now zone schedules = T.unlines $ displaySchedule now zone <$> s
 displaySchedule :: UTCTime -> TimeZone -> (ScheduleID, Schedule) -> Text
 displaySchedule now zone (scheduleID, schedule) = T.unwords [idText, timeText, remainingTime, channelRef, messagePreview]
   where
-    idText = "`ID:" <> toText (scheduleIDToHashCode scheduleID) <> "`"
+    idText = "`ID:" <> toText scheduleID <> "`"
     timeText = T.pack $ formatTime defaultTimeLocale "🗓 %Y/%m/%d %T" $ utcToZonedTime zone $ scheduleTime schedule
     remainingTime = T.pack $ formatTime defaultTimeLocale "(%dd %0H:%0M remaining)" $ diffUTCTime (scheduleTime schedule) now
-    channelRef = "<#" <> toText (toInteger $ scheduleChannelID schedule) <> ">"
+    channelRef = "<#" <> toText (scheduleChannelID schedule) <> ">"
     messagePreview = formatMessage 30 $ scheduleMessage schedule
 
 formatMessage :: Int -> Text -> Text
