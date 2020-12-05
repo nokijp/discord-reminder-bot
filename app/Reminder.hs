@@ -54,7 +54,7 @@ postReminder logset schedule = do
   let
     rawMessage = scheduleMessage schedule
     refMessage = userRef <> connector <> rawMessage
-    userRef = "<@" <> toText (toInteger $ scheduleUserID schedule) <> ">"
+    userRef = "<@" <> toText (scheduleUserID schedule) <> ">"
     connector = if "\n" `T.isInfixOf` rawMessage then "\n" else " "
   status <- lift $ if messageExists
                    then restCall $ CreateReply channelID messageReferenceID rawMessage
