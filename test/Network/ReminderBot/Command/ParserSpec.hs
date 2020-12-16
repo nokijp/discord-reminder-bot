@@ -16,6 +16,9 @@ spec :: Spec
 spec = do
   describe "parseMessage" $ do
     context "when given an \"add\" command" $ do
+      --
+      -- when you modify this context section, make the same change to the next context section.
+      --
       it "can parse \"hh:mm\"" $
         parseMessage "1234" "<@1234>add 11:22 abc" `shouldBe` Just (Right (CommandAdd (CommandTimeHM 11 22) "abc"))
       it "can parse \"MM/DD hh:mm\"" $
@@ -38,6 +41,30 @@ spec = do
         parseMessage "1234" "<@!1234>add 11:22 abc" `shouldBe` Just (Right (CommandAdd (CommandTimeHM 11 22) "abc"))
       it "returns Nothing if the ID does not match" $
         parseMessage "1234" "<@5678>add 11:22 abd" `shouldBe` Nothing
+
+    context "when given an implicit \"add\" command" $ do
+      it "can parse \"hh:mm\"" $
+        parseMessage "1234" "<@1234>11:22 abc" `shouldBe` Just (Right (CommandAdd (CommandTimeHM 11 22) "abc"))
+      it "can parse \"MM/DD hh:mm\"" $
+        parseMessage "1234" "<@1234>11/22 33:44 abc" `shouldBe` Just (Right (CommandAdd (CommandTimeMDHM 11 22 33 44) "abc"))
+      it "can parse \"YYYY/MM/DD hh:mm\"" $
+        parseMessage "1234" "<@1234>1111/22/33 44:55 abc" `shouldBe` Just (Right (CommandAdd (CommandTimeYMDHM 1111 22 33 44 55) "abc"))
+      it "can parse a command whose message contains multibyte characters" $
+        parseMessage "1234" "<@1234>11:22 あいう" `shouldBe` Just (Right (CommandAdd (CommandTimeHM 11 22) "あいう"))
+      it "can parse a command whose message contains spaces" $
+        parseMessage "1234" "<@1234>11:22 a b  c" `shouldBe` Just (Right (CommandAdd (CommandTimeHM 11 22) "a b  c"))
+      it "can parse a command which contains an extra time information" $
+        parseMessage "1234" "<@1234>11:22 33:44 abc" `shouldBe` Just (Right (CommandAdd (CommandTimeHM 11 22) "33:44 abc"))
+      it "can parse a command with extra spaces" $
+        parseMessage "1234" "<@1234>  11:22     abc  " `shouldBe` Just (Right (CommandAdd (CommandTimeHM 11 22) "abc"))
+      it "returns AddArgumentError if the body is empty" $
+        parseMessage "1234" "<@1234>" `shouldBe` Just (Left UnknownCommandError)
+      it "returns AddArgumentError if the message is empty" $
+        parseMessage "1234" "<@1234>11:22   " `shouldBe` Just (Left UnknownCommandError)
+      it "can parse nicknames" $
+        parseMessage "1234" "<@!1234>11:22 abc" `shouldBe` Just (Right (CommandAdd (CommandTimeHM 11 22) "abc"))
+      it "returns Nothing if the ID does not match" $
+        parseMessage "1234" "<@5678>11:22 abd" `shouldBe` Nothing
 
     context "when given a \"ls\" command" $ do
       it "can parse" $

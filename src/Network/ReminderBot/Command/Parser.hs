@@ -28,7 +28,7 @@ parseMessage botUserID message = parseCommand <$> messageBody
 parseCommand :: Text -> Either CommandError Command
 parseCommand input =
   let (commandName, commandBody) = fromRight ("", "") $ parse inputParser "" input
-  in parseCommandBody commandName commandBody
+  in parseCommandBody input commandName commandBody
 
 inputParser :: Parser (Text, Text)
 inputParser =   try ((, "") <$> (spaces *> commandName <* spaces <* eof))
@@ -37,13 +37,13 @@ inputParser =   try ((, "") <$> (spaces *> commandName <* spaces <* eof))
     commandName = T.pack <$> many1 alphaNum
     commandBody = T.strip . T.pack <$> many anyToken
 
-parseCommandBody :: Text -> Text -> Either CommandError Command
-parseCommandBody "add" commandBody = left (const AddArgumentError) $ parse addCommandParser "" commandBody
-parseCommandBody "ls"  "all"       = Right CommandListGuild
-parseCommandBody "ls"  ""          = Right CommandListChannel
-parseCommandBody "ls"  _           = Left ListArgumentError
-parseCommandBody "rm"  commandBody = left (const RemoveArgumentError) $ parse removeCommandParser "" commandBody
-parseCommandBody _     _           = Left UnknownCommandError
+parseCommandBody :: Text -> Text -> Text -> Either CommandError Command
+parseCommandBody _        "add" commandBody = left (const AddArgumentError) $ parse addCommandParser "" commandBody
+parseCommandBody _        "ls"  "all"       = Right CommandListGuild
+parseCommandBody _        "ls"  ""          = Right CommandListChannel
+parseCommandBody _        "ls"  _           = Left ListArgumentError
+parseCommandBody _        "rm"  commandBody = left (const RemoveArgumentError) $ parse removeCommandParser "" commandBody
+parseCommandBody rawInput _     _           = left (const UnknownCommandError) $ parse addCommandParser "" $ T.stripStart rawInput
 
 addCommandParser :: Parser Command
 addCommandParser = CommandAdd <$> timeParser <*> (skipMany1 space *> messageParser <* eof)
