@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main
@@ -8,7 +9,7 @@ import CommandReceiver
 import Control.Concurrent
 import Control.Exception
 import Control.Monad
-import Control.Monad.Trans
+import Control.Monad.Reader
 import Data.IORef
 import Data.Maybe
 import Data.Text (Text)
@@ -32,24 +33,31 @@ main = do
                                                }
   waitStore 10 storeConfig
 
-  bracket logger flushLogStr $ \logset ->
+  bracket logger flushLogStr $ \logset -> do
+    handleRef <- newIORef (Nothing :: Maybe DiscordHandle)
+    _ <- forkRemindLoop handleRef logset storeConfig
+    let setHandle = writeIORef handleRef . Just
+
     retry logset $ \reset -> do
       err <- runDiscord $ def { discordToken = token
-                              , discordOnStart = lift reset >> void (forkRemindLoop logset storeConfig)
+                              , discordOnStart = do
+                                                   dis <- ask
+                                                   lift reset
+                                                   lift $ setHandle dis
                               , discordOnEvent = receiveCommand logset storeConfig
                               }
-      putLog logset $ "error: " <> err
+      $putLog' logset $ "error: " <> err
 
 retry :: LoggerSet -> (IO () -> IO ()) -> IO ()
 retry logset f = do
   countRef <- newIORef 0
   let reset = atomicWriteIORef countRef 0
   forever $ do
-    putLog logset ("start" :: Text)
+    $putLog' logset ("start" :: Text)
     f reset
     count <- readIORef countRef
     let delayInSeconds = retryIntervalInSeconds count
-    putLog logset $ "retry (wait = " <> show delayInSeconds <> " s)"
+    $putLog' logset $ "retry (wait = " <> show delayInSeconds <> " s)"
     threadDelay $ delayInSeconds * 1000000
     writeIORef countRef (count + 1)
 
