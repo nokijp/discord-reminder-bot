@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Reminder
@@ -50,7 +51,7 @@ postReminder logset schedule = do
   messageExists <- case messageReference of
                      Right _ -> return True
                      Left (RestCallErrorCode 404 _ _) -> return False
-                     Left e -> putLog logset (show e) >> exitM
+                     Left e -> $putLog' logset (show e) >> exitM
   let
     rawMessage = scheduleMessage schedule
     refMessage = userRef <> connector <> rawMessage
@@ -59,12 +60,12 @@ postReminder logset schedule = do
   status <- lift $ if messageExists
                    then restCall $ CreateReply channelID messageReferenceID rawMessage
                    else restCall $ CreateMessage channelID refMessage
-  either (\e -> putLog logset (show e) >> exitM) (const $ return ()) status
+  either (\e -> $putLog' logset (show e) >> exitM) (const $ return ()) status
 
 runScheduleM :: (MonadIO m, MonadCatch m) => LoggerSet -> m a -> MaybeT m a
 runScheduleM logset action = do
   res <- lift $ trySchedule action
-  either (\e -> putLog logset e >> exitM) return res
+  either (\e -> $putLog' logset e >> exitM) return res
 
 forkDiscordHandler :: DiscordHandler () -> DiscordHandler ThreadId
 forkDiscordHandler action = do

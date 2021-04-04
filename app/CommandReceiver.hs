@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module CommandReceiver
@@ -39,7 +40,7 @@ receiveCommand logset config (MessageCreate m) | isNotFromBot m = fmap (fromMayb
   responseEither <- lift $ runExceptT $ runCommand logset config now guildID channelID messageID userID command
   let response = either ("error: " <>) id responseEither
   status <- lift $ restCall $ CreateReply (messageChannel m) (messageId m) response
-  either (putLog logset . show) (const $ return ()) status
+  either ($putLog' logset . show) (const $ return ()) status
 receiveCommand _ _ _ = return ()
 
 runCommand :: (MonadIO m, MonadCatch m)
@@ -112,7 +113,7 @@ formatMessage len = truncateText . spaceToSpace . removeSpecialCharacters . T.st
 scheduleE :: (MonadIO m, MonadCatch m) => LoggerSet -> m a -> ExceptT Text m a
 scheduleE logset m = do
   res <- lift $ trySchedule m
-  either (\e -> putLog logset e >> throwE "internal error") return res
+  either (\e -> $putLog' logset e >> throwE "internal error") return res
 
 
 spyBotUserID :: DiscordHandler UserId

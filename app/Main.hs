@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main
@@ -38,18 +39,18 @@ main = do
                               , discordOnStart = lift reset >> void (forkRemindLoop logset storeConfig)
                               , discordOnEvent = receiveCommand logset storeConfig
                               }
-      putLog logset $ "error: " <> err
+      $putLog' logset $ "error: " <> err
 
 retry :: LoggerSet -> (IO () -> IO ()) -> IO ()
 retry logset f = do
   countRef <- newIORef 0
   let reset = atomicWriteIORef countRef 0
   forever $ do
-    putLog logset ("start" :: Text)
+    $putLog' logset ("start" :: Text)
     f reset
     count <- readIORef countRef
     let delayInSeconds = retryIntervalInSeconds count
-    putLog logset $ "retry (wait = " <> show delayInSeconds <> " s)"
+    $putLog' logset $ "retry (wait = " <> show delayInSeconds <> " s)"
     threadDelay $ delayInSeconds * 1000000
     writeIORef countRef (count + 1)
 
