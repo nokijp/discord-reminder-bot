@@ -48,18 +48,18 @@ spec = do
     it "returns a schedule which has the most earliest time" $ do
       resultMultipleItems `shouldBe` Just (messageHashCode 1001, Schedule (timeD 1) 1 11 101 1001 "message1")
 
-  describe "getScheduleBefore" $ do
+  describe "getScheduleBeforeOrEqual" $ do
     resultEmpty <- runIO $ do
       let config = scheduleStoreConfig "collectionGetEmpty"
-      getScheduleBefore config (timeD 1)
+      getScheduleBeforeOrEqual config (timeD 1)
     it "returns an empty list when the DB has no documents" $ do
       resultEmpty `shouldMatchList` []
 
     (resultSingleItem1, resultSingleItem2) <- runIO $ do
       let config = scheduleStoreConfig "collectionGetSingleItem"
       _ <- addSchedule config $ Schedule (timeD 2) 1 11 101 1001 "message1"
-      result1 <- getScheduleBefore config (timeD 1)
-      result2 <- getScheduleBefore config (timeD 2)
+      result1 <- getScheduleBeforeOrEqual config (timeD 1)
+      result2 <- getScheduleBeforeOrEqual config (timeD 2)
       return (result1, result2)
     it "returns a schedule whose time is before a specified time" $ do
       resultSingleItem1 `shouldMatchList` []
@@ -70,9 +70,9 @@ spec = do
       _ <- addSchedule config $ Schedule (timeD 1) 1 11 101 1001 "message1"
       _ <- addSchedule config $ Schedule (timeD 2) 2 12 202 1002 "message2"
       _ <- addSchedule config $ Schedule (timeD 3) 3 13 303 1003 "message3"
-      result1 <- getScheduleBefore config (timeD 1)
-      result2 <- getScheduleBefore config (timeD 2)
-      result3 <- getScheduleBefore config (timeD 3)
+      result1 <- getScheduleBeforeOrEqual config (timeD 1)
+      result2 <- getScheduleBeforeOrEqual config (timeD 2)
+      result3 <- getScheduleBeforeOrEqual config (timeD 3)
       return (result1, result2, result3)
     it "returns all schedules whose time is before the specified time" $ do
       resultMultipleItems1 `shouldMatchList` [(messageHashCode 1001, Schedule (timeD 1) 1 11 101 1001 "message1")]
@@ -82,14 +82,14 @@ spec = do
     resultManyItems <- runIO $ do
       let config = scheduleStoreConfig "collectionGetManyItems"
       _ <- replicateM_ 200 $ addSchedule config $ Schedule (timeD 1) 1 11 101 1001 "message1"
-      getScheduleBefore config (timeD 1)
+      getScheduleBeforeOrEqual config (timeD 1)
     it "can return a large number of schedules" $ do
       length resultManyItems `shouldBe` 200
 
-  describe "removeScheduleBefore" $ do
+  describe "removeScheduleBeforeOrEqual" $ do
     resultEmpty <- runIO $ do
       let config = scheduleStoreConfig "collectionRemoveEmpty"
-      removeScheduleBefore config (timeD 1)
+      removeScheduleBeforeOrEqual config (timeD 1)
     it "does not crash if the storage is empty" $ do
       resultEmpty `shouldBe` ()
 
@@ -98,9 +98,9 @@ spec = do
       _ <- addSchedule config $ Schedule (timeD 1) 1 11 101 1001 "message1"
       _ <- addSchedule config $ Schedule (timeD 2) 2 12 202 1002 "message2"
       _ <- addSchedule config $ Schedule (timeD 3) 3 13 303 1003 "message3"
-      result1 <- getScheduleBefore config (timeD 3)
-      removeScheduleBefore config (timeD 2)
-      result2 <- getScheduleBefore config (timeD 3)
+      result1 <- getScheduleBeforeOrEqual config (timeD 3)
+      removeScheduleBeforeOrEqual config (timeD 2)
+      result2 <- getScheduleBeforeOrEqual config (timeD 3)
       return (result1, result2)
     it "removes only schedules whose time is before the specified time" $ do
       resultMultipleItems1 `shouldMatchList` [(messageHashCode 1001, Schedule (timeD 1) 1 11 101 1001 "message1"), (messageHashCode 1002, Schedule (timeD 2) 2 12 202 1002 "message2"), (messageHashCode 1003, Schedule (timeD 3) 3 13 303 1003 "message3")]
@@ -181,7 +181,7 @@ spec = do
       resultRemove3 <- removeSchedule config (messageHashCode 1001)  -- [2, 3]
       resultRemove4 <- removeSchedule config (messageHashCode 3003)  -- [2, 3]
       resultRemove5 <- removeSchedule config (messageHashCode 1002)  -- [2]
-      resultGet <- getScheduleBefore config (timeD 1)
+      resultGet <- getScheduleBeforeOrEqual config (timeD 1)
       return (resultRemove1, resultRemove2, resultRemove3, resultRemove4, resultRemove5, resultGet)
     it "removes a schedule and returns True if and only if the schedule exists" $ do
       resultRemove1 `shouldBe` False

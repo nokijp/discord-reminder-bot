@@ -6,8 +6,8 @@ module Network.ReminderBot.ScheduleStore
   , defaultScheduleStoreConfig
   , addSchedule
   , getFirstSchedule
-  , getScheduleBefore
-  , removeScheduleBefore
+  , getScheduleBeforeOrEqual
+  , removeScheduleBeforeOrEqual
   , listGuildSchedule
   , listChannelSchedule
   , removeSchedule
@@ -64,15 +64,15 @@ getFirstSchedule config = runAction config $ do
   documentMaybe <- findOne query
   return $ extractSchedule =<< documentMaybe
 
-getScheduleBefore :: MonadIO m => ScheduleStoreConfig -> UTCTime -> m [(ScheduleID, Schedule)]
-getScheduleBefore config time = runAction config $ do
-  cursor <- find $ selectBefore config time
+getScheduleBeforeOrEqual :: MonadIO m => ScheduleStoreConfig -> UTCTime -> m [(ScheduleID, Schedule)]
+getScheduleBeforeOrEqual config time = runAction config $ do
+  cursor <- find $ selectBeforeOrEqual config time
   documents <- allDocuments cursor
   return $ mapMaybe extractSchedule documents
 
-removeScheduleBefore :: MonadIO m => ScheduleStoreConfig -> UTCTime -> m ()
-removeScheduleBefore config time = runAction config $
-  delete $ selectBefore config time
+removeScheduleBeforeOrEqual :: MonadIO m => ScheduleStoreConfig -> UTCTime -> m ()
+removeScheduleBeforeOrEqual config time = runAction config $
+  delete $ selectBeforeOrEqual config time
 
 listGuildSchedule :: MonadIO m => ScheduleStoreConfig -> GuildID -> m [(ScheduleID, Schedule)]
 listGuildSchedule config guildID = listSchedule config [guildLabel =: Int64 (fromIntegral guildID)]
@@ -119,8 +119,8 @@ extractSchedule d = do
     identifier = ScheduleID $ hashCode $ fromIntegral (source :: Int64)
   return (identifier, schedule)
 
-selectBefore :: Select a => ScheduleStoreConfig -> UTCTime -> a
-selectBefore config time = select [scheduleTimeLabel =: ["$lte" =: UTC time]] $ collectionName config
+selectBeforeOrEqual :: Select a => ScheduleStoreConfig -> UTCTime -> a
+selectBeforeOrEqual config time = select [scheduleTimeLabel =: ["$lte" =: UTC time]] $ collectionName config
 
 allDocuments :: MonadIO m => Cursor -> Action m [Document]
 allDocuments cursor = do

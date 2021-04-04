@@ -24,22 +24,24 @@ import System.Log.FastLogger
 forkRemindLoop :: LoggerSet -> ScheduleStoreConfig -> DiscordHandler ThreadId
 forkRemindLoop logset config = forkDiscordHandler $ runEveryMinute $ remind logset config
 
-remind :: LoggerSet -> ScheduleStoreConfig -> UTCTime -> DiscordHandler ()
-remind logset config now = void $ runMaybeT $ do
-  schedules <- runScheduleM logset $ getScheduleBefore config now
-  mapM_ (postReminder logset) (snd <$> schedules)
-  _ <- runScheduleM logset $ removeScheduleBefore config now
-  return ()
+remind :: LoggerSet -> ScheduleStoreConfig -> DiscordHandler ()
+remind logset config = void $ runMaybeT $ do
+  now <- liftIO getCurrentTime
+  schedules <- runScheduleM logset $ getScheduleBeforeOrEqual config now
+  forM_ schedules $ \(scheduleID, schedule) -> do
+    postReminder logset schedule
+    runScheduleM logset $ removeSchedule config scheduleID
 
-runEveryMinute :: (UTCTime -> DiscordHandler ()) -> DiscordHandler ()
+runEveryMinute :: DiscordHandler () -> DiscordHandler ()
 runEveryMinute action = forever $ do
+  action
+
   now <- lift getCurrentTime
-  _ <- forkDiscordHandler $ action now
   let
     nowZeroSec = fromIntegral $ ((floor $ utctDayTime now :: Integer) `div` 60) * 60
     next = addUTCTime 60 $ UTCTime (utctDay now) nowZeroSec
     delay = diffUTCTime next now
-    delayInMicros = floor (delay * 1000 * 1000)
+    delayInMicros = if delay > 0 then floor (delay * 1000 * 1000) else 0
   lift $ threadDelay delayInMicros
 
 postReminder :: LoggerSet -> Schedule -> MaybeT DiscordHandler ()
