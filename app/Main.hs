@@ -9,7 +9,7 @@ import CommandReceiver
 import Control.Concurrent
 import Control.Exception
 import Control.Monad
-import Control.Monad.Trans
+import Control.Monad.Reader
 import Data.IORef
 import Data.Maybe
 import Data.Text (Text)
@@ -33,10 +33,17 @@ main = do
                                                }
   waitStore 10 storeConfig
 
-  bracket logger flushLogStr $ \logset ->
+  bracket logger flushLogStr $ \logset -> do
+    handleRef <- newIORef (Nothing :: Maybe DiscordHandle)
+    _ <- forkRemindLoop handleRef logset storeConfig
+    let setHandle = writeIORef handleRef . Just
+
     retry logset $ \reset -> do
       err <- runDiscord $ def { discordToken = token
-                              , discordOnStart = lift reset >> void (forkRemindLoop logset storeConfig)
+                              , discordOnStart = do
+                                                   dis <- ask
+                                                   lift reset
+                                                   lift $ setHandle dis
                               , discordOnEvent = receiveCommand logset storeConfig
                               }
       $putLog' logset $ "error: " <> err

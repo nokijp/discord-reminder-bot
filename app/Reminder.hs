@@ -11,6 +11,7 @@ import Control.Monad.Catch
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.Trans.Maybe
+import Data.IORef
 import Data.Time.Clock
 import qualified Data.Text as T
 import Discord
@@ -21,8 +22,8 @@ import Network.ReminderBot.ScheduleStore
 import RequestExts
 import System.Log.FastLogger
 
-forkRemindLoop :: LoggerSet -> ScheduleStoreConfig -> DiscordHandler ThreadId
-forkRemindLoop logset config = forkDiscordHandler $ runEveryMinute $ remind logset config
+forkRemindLoop :: IORef (Maybe DiscordHandle) -> LoggerSet -> ScheduleStoreConfig -> IO ThreadId
+forkRemindLoop handleRef logset config = forkIO $ runEveryMinute handleRef logset $ remind logset config
 
 remind :: LoggerSet -> ScheduleStoreConfig -> DiscordHandler ()
 remind logset config = void $ runMaybeT $ do
@@ -32,17 +33,18 @@ remind logset config = void $ runMaybeT $ do
     postReminder logset schedule
     runScheduleM logset $ removeSchedule config scheduleID
 
-runEveryMinute :: DiscordHandler () -> DiscordHandler ()
-runEveryMinute action = forever $ do
-  action
+runEveryMinute :: IORef (Maybe DiscordHandle) -> LoggerSet -> DiscordHandler () -> IO ()
+runEveryMinute handleRef logset action = forever $ do
+  maybeHandle <- readIORef handleRef
+  maybe ($putLog' logset ("skip" :: String)) (runReaderT action) maybeHandle
 
-  now <- lift getCurrentTime
+  now <- getCurrentTime
   let
     nowZeroSec = fromIntegral $ ((floor $ utctDayTime now :: Integer) `div` 60) * 60
     next = addUTCTime 60 $ UTCTime (utctDay now) nowZeroSec
     delay = diffUTCTime next now
     delayInMicros = if delay > 0 then floor (delay * 1000 * 1000) else 0
-  lift $ threadDelay delayInMicros
+  threadDelay delayInMicros
 
 postReminder :: LoggerSet -> Schedule -> MaybeT DiscordHandler ()
 postReminder logset schedule = do
@@ -68,8 +70,3 @@ runScheduleM :: (MonadIO m, MonadCatch m) => LoggerSet -> m a -> MaybeT m a
 runScheduleM logset action = do
   res <- lift $ trySchedule action
   either (\e -> $putLog' logset e >> exitM) return res
-
-forkDiscordHandler :: DiscordHandler () -> DiscordHandler ThreadId
-forkDiscordHandler action = do
-  dis <- ask
-  lift $ forkIO $ runReaderT action dis
